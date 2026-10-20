@@ -34,7 +34,7 @@ Status markers: ☐ not started · ◐ in progress · ☑ done (verified by exec
 | 2.17 | Deterministic, bounded per-request sample (R6) and a high-resolution client timer | `k6/bench.js`, `scripts/run_matrix.py` |
 | 2.18 | Paired run-level statistics and pre-specified acceptance checks | `analysis/stats.py`, `analysis/validate_pipeline.py`, `tests/test_analysis.py` |
 | ☑ | Validation of the revised pipeline executed: closed loop 24/24; open loop 11/12 on the fourth attempt, with one R6(d) sample-quantile failure documented | `results/raw/*-validate-*`, `reports/pilot.md` §10.3 |
-| ☐ | **Owner approval of the validation** ← *current gate before the full matrix* | |
+| ☑ | Owner approval of the validation (2026-10-20): accepted as reported, including the one R6(d) failure; the full matrix and then the open-loop experiment approved | `reports/pilot.md` §10.3 |
 
 ### Deviations from the Phase 1 design (recorded during implementation)
 
