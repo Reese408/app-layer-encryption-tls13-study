@@ -173,17 +173,31 @@ def forest(res: pd.DataFrame, metric: str, title: str) -> str:
                 f'y1="{y:.1f}" y2="{y:.1f}" stroke="var(--s2)" stroke-opacity=".3" '
                 f'stroke-width="6" stroke-linecap="round"/>'
             )
+            # An interval that extends past the axis is drawn to the edge with an arrowhead.
+            for end, edge, d in ((r.ratio_simci_lo, lo, -1), (r.ratio_simci_hi, hi, 1)):
+                if (end < edge) if d < 0 else (end > edge):
+                    ex = x(edge)
+                    parts.append(
+                        f'<path d="M{ex - 7 * d:.1f},{y - 5:.1f} L{ex:.1f},{y:.1f} '
+                        f'L{ex - 7 * d:.1f},{y + 5:.1f}" fill="none" stroke="var(--s2)" '
+                        f'stroke-width="2"><title>interval extends beyond the axis</title></path>'
+                    )
         if not math.isnan(r.ratio_ci95_lo):
             parts.append(
                 f'<line x1="{x(r.ratio_ci95_lo):.1f}" x2="{x(r.ratio_ci95_hi):.1f}" '
                 f'y1="{y:.1f}" y2="{y:.1f}" stroke="var(--s2)" stroke-width="2"/>'
             )
         sig = "" if math.isnan(r.p_holm) else (" ✓" if r.p_holm < 0.05 else "")
+        ci_label = (
+            "[CI n/a]"
+            if math.isnan(r.ratio_ci95_lo)
+            else f"[{(r.ratio_ci95_lo - 1) * 100:+.0f}, {(r.ratio_ci95_hi - 1) * 100:+.0f}]"
+        )
         parts.append(
             f'<circle cx="{x(r.ratio):.1f}" cy="{y:.1f}" r="5" fill="var(--s2)" '
             f'stroke="var(--surface)" stroke-width="2"/>'
             f'<text class="t1" x="{W - right + 12}" y="{y + 4:.1f}">{r.pct_change:+.1f}% '
-            f"[{(r.ratio_ci95_lo - 1) * 100:+.0f}, {(r.ratio_ci95_hi - 1) * 100:+.0f}]{sig}</text>"
+            f"{ci_label}{sig}</text>"
             "</g>"
         )
     parts.append("</svg>")
@@ -210,7 +224,7 @@ def forest(res: pd.DataFrame, metric: str, title: str) -> str:
     ]
     return (
         f"<h3>{esc(title)}</h3><p class='sub'>Point = geometric-mean ratio aead/plain over "
-        "blocks; dark bar = 95% CI; faint bar = Bonferroni-simultaneous CI for the family. "
+        "blocks; dark bar = 95% CI; faint bar = Bonferroni-simultaneous CI for the family (arrowhead = extends beyond the axis). "
         "Right: % change [95% CI]; ✓ = Holm-adjusted p &lt; 0.05. Log scale.</p>"
         f'<div class="card">{"".join(parts)}'
         f"{details('Table view', table(t[cols], 4))}</div>"
