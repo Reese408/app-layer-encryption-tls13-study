@@ -1,0 +1,52 @@
+# Two API configurations from one image with identical resource limits, plus an
+# on-demand k6 load generator (profile "bench"). Nothing is published beyond loopback.
+name: aead-study
+
+x-api: &api
+  build: .
+  image: aead-study-api:local
+  cpus: 2.0
+  mem_limit: 1g
+  volumes:
+    - ./certs:/certs:ro
+  environment: &api-env
+    WORKLOAD_ROUNDS: "16"
+    AEAD_KEY_FILE: /run/secrets/aead_keys
+  restart: "no"
+
+services:
+  api-plain:
+    <<: *api
+    environment:
+      <<: *api-env
+      ENCRYPTION_MODE: "off"
+    ports: ["127.0.0.1:8443:8443"]
+
+  api-aead:
+    <<: *api
+    environment:
+      <<: *api-env
+      ENCRYPTION_MODE: "aesgcm"
+    secrets: [aead_keys]
+    ports: ["127.0.0.1:8444:8443"]
+
+  k6:
+    image: grafana/k6@sha256:e66db15b860113878fa74670e31f5e274830b7b6e42c8bff28b2f2d86a257603
+    profiles: [bench]
+    cpus: 8.0
+    mem_limit: 3g
+    environment:
+      SSL_CERT_FILE: /certs/ca.pem   # trust the lab CA; verification stays enabled
+      K6_NO_USAGE_REPORT: "true"
+    volumes:
+      - ./k6:/scripts:ro
+      - ./certs/ca.pem:/certs/ca.pem:ro
+      - ./results/raw:/results
+    secrets: [aead_keys]
+    depends_on:
+      api-plain: {condition: service_healthy}
+      api-aead: {condition: service_healthy}
+
+secrets:
+  aead_keys:
+    file: ./secrets/aead_keys.json
