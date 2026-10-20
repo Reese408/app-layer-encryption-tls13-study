@@ -74,7 +74,14 @@ vus = [64]
 # which 3 of 4 runs at 1k / 7,000 req/s dropped 106-113 iterations at start-up ("Insufficient
 # VUs, reached 64") although the measured rate was on target. The 1k pool is doubled, and the
 # 1k sample interval is reduced so the open-loop 1k sample is about 4,000 requests, not 1,040.
-pool = { "1k" = 128, "16k" = 64, "256k" = 64 }
+# Revised again 2026-10-20 (approved) after the second open-loop validation
+# (20261020T221439Z-validate-open) and two diagnostic runs: (1) each run is split into a
+# ramped `warmup` scenario and a constant-rate `measure` scenario (see k6/bench.js), which
+# removed the start-up drops; (2) the remaining drops came from transient stalls of the whole
+# Docker VM (~40 ms; requests took 39 ms while the server spent 0.05 ms in the handler). The
+# pool is therefore sized to absorb a 100 ms stall: max(64, ceil(rate x 0.1 s)). Idle pool VUs
+# hold no connection; in normal operation about 5 VUs are busy at 7,000 req/s.
+pool = { "1k" = 700, "16k" = 190, "256k" = 64 }
 sample_every = { "1k" = 25, "16k" = 25, "256k" = 3 }
 reps = 2
 warmup_s = 5
@@ -88,7 +95,7 @@ modes = ["plain", "aead"]
 sizes = ["1k", "16k", "256k"]
 rates = { "1k" = 7000, "16k" = 1900, "256k" = 140 }
 vus = [64]
-pool = { "1k" = 128, "16k" = 64, "256k" = 64 }   # as validate-open
+pool = { "1k" = 700, "16k" = 190, "256k" = 64 }   # as validate-open
 sample_every = { "1k" = 25, "16k" = 25, "256k" = 3 }
 reps = 5
 warmup_s = 10

@@ -16,7 +16,10 @@ evaluated per run, and the script exits non-zero if any run fails any criterion.
                (c) every sampled request: status 200, integrity 1, measurement phase,
                    index divisible by K, indices unique
                (d) sample p50 within 5% and sample p95 within 10% of k6's exact values
-  R3 open loop (a) dropped_iterations == 0 (whole run, including warm-up)
+  R3 open loop (a) dropped_iterations == 0: in the measurement scenario when the run uses
+                   separate warmup/measure scenarios (amended 2026-10-20, after the second
+                   open-loop validation and before the third was run; warm-up drops are
+                   reported); otherwise over the whole run, including warm-up
                (b) achieved request rate within ±1% of the target
                (informative) schedule lag of sampled iterations, p99 relative to minimum
   client       k6 CPU measured and below the saturation threshold
@@ -131,7 +134,13 @@ def main() -> None:
                 c["sample_p95_err_pct"] = round(e95 * 100, 2)
 
         if r.executor == "constant-arrival-rate":
-            c["r3a_no_drops"] = bool(r.dropped_iterations == 0)
+            # Scenario-split runs: zero drops in the measurement window (warm-up drops are
+            # recorded). Earlier single-scenario runs: zero drops over the whole run.
+            split = not np.isnan(r.dropped_measure)
+            c["r3a_no_drops"] = bool((r.dropped_measure if split else r.dropped_iterations) == 0)
+            c["dropped_measure"] = float(r.dropped_measure) if split else float("nan")
+            c["dropped_warmup"] = float(r.dropped_warmup) if split else float("nan")
+            c["dropped_total"] = float(r.dropped_iterations)
             c["r3b_rate"] = bool(abs(r.achieved_rate_frac - 1) <= 0.01)
             c["achieved_rate_frac"] = round(float(r.achieved_rate_frac), 5)
             if k and len(s):

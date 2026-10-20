@@ -110,6 +110,14 @@ def per_run(raw: Path, cfg: dict) -> pd.DataFrame:
                 "rps": n / dur,
                 # dropped_iterations is not phase-tagged by k6: whole run incl. warm-up.
                 "dropped_iterations": _raw(m, "dropped_iterations", "count", 0.0),
+                # Open loop with separate warmup/measure scenarios (from 2026-10-20T22:30Z):
+                # exact per-window counts. NaN for datasets recorded before the split.
+                "dropped_measure": _raw(
+                    m, "dropped_iterations{scenario:measure}", "count", float("nan")
+                ),
+                "dropped_warmup": _raw(
+                    m, "dropped_iterations{scenario:warmup}", "count", float("nan")
+                ),
                 "api_idle_mem_mib": idle_baseline_mib(
                     res, api, run.run_id, int(doc["t0_epoch_ms"] * 1e6)
                 ),

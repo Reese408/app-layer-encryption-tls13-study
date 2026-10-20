@@ -9,6 +9,15 @@
 //   constant-arrival-rate   open loop (separate experiment): RATE iterations/s are started on a
 //                           fixed schedule from a pool of VUS pre-allocated VUs. An iteration
 //                           that cannot start on time is counted in k6 `dropped_iterations`.
+//                           Run as two consecutive scenarios (approved 2026-10-20 after the
+//                           open-loop validations dropped iterations at start-up only):
+//                             warmup   ramping-arrival-rate, 0 -> RATE over RAMP_S, then RATE
+//                                      until WARMUP_S; gracefulStop 0 so it never overlaps the
+//                                      next scenario and k6 reuses the same VUs (and their
+//                                      established TLS connections) for measurement
+//                             measure  constant-arrival-rate at RATE from WARMUP_S for DURATION_S
+//                           k6 tags dropped_iterations with the scenario, so drops in the
+//                           measurement window are counted exactly and separately from warm-up.
 //
 // Timing sources:
 //   http_req_duration       k6 high-resolution timer: send -> last response byte (TLS + server)
@@ -18,7 +27,8 @@
 //   client_decrypt_ms       clock (the pilot used Date.now(), which has 1 ms resolution).
 //   server_*_ms             Parsed from the server's Server-Timing header (perf_counter_ns)
 //
-// Warm-up: iterations that START before WARMUP_S are tagged phase=warmup and excluded.
+// Warm-up: iterations that START before WARMUP_S (closed loop), or that belong to the warmup
+// scenario (open loop), are tagged phase=warmup and excluded.
 //
 // Per-request sample (SAMPLE_EVERY=K > 0): every measured iteration whose global index
 // (exec.scenario.iterationInTest) is divisible by K is written to the log as one `S,` line.
@@ -53,6 +63,7 @@ if (OPEN && !(RATE > 0)) throw new Error('RATE required for constant-arrival-rat
 const PATH = '/v1/process';
 const URL = `https://${MODE === 'plain' ? 'api-plain' : 'api-aead'}:8443${PATH}`;
 const WARMUP_MS = WARMUP_S * 1000;
+const RAMP_S = Math.ceil(WARMUP_S / 2); // open loop: rate ramp, then full rate for the rest
 
 // Per-VU fixtures (only the representation this mode needs is retained).
 const fixture = JSON.parse(open(`./fixtures/payloads-${SIZE}.json`));
@@ -93,25 +104,47 @@ const thresholds = {
   [`http_req_failed${M}`]: SMOKE ? ['rate==0'] : ['rate>=0'],
   [`checks${M}`]: SMOKE ? ['rate==1'] : ['rate>=0'],
   [`integrity_ok${M}`]: SMOKE ? ['rate==1'] : ['rate>=0'],
-  // Not phase-tagged by k6 (emitted by the executor, not a VU), so this covers the whole run.
-  // In the open-loop experiment any dropped iteration invalidates the run (k6 exit 99).
-  dropped_iterations: OPEN || SMOKE ? ['count==0'] : ['count>=0'],
+  // Emitted by the executor, not a VU, so it carries no phase tag; the untagged metric covers
+  // the whole run. In the open loop it is also reported per scenario, and any drop in the
+  // measurement window invalidates the run (k6 exit 99). Warm-up drops are recorded only.
+  dropped_iterations: SMOKE && !OPEN ? ['count==0'] : ['count>=0'],
 };
+if (OPEN) {
+  thresholds['dropped_iterations{scenario:measure}'] = ['count==0'];
+  thresholds['dropped_iterations{scenario:warmup}'] = ['count>=0'];
+}
 
-const scenario = OPEN
+const scenarios = OPEN
   ? {
-      executor: 'constant-arrival-rate',
-      rate: RATE,
-      timeUnit: '1s',
-      duration: `${WARMUP_S + DURATION_S}s`,
-      preAllocatedVUs: VUS,
-      maxVUs: VUS, // no mid-run VU allocation
-      gracefulStop: '10s',
+      warmup: {
+        executor: 'ramping-arrival-rate',
+        startRate: 0,
+        timeUnit: '1s',
+        stages: [
+          { target: RATE, duration: `${RAMP_S}s` },
+          { target: RATE, duration: `${WARMUP_S - RAMP_S}s` },
+        ],
+        preAllocatedVUs: VUS,
+        maxVUs: VUS, // no mid-run VU allocation
+        gracefulStop: '0s',
+      },
+      measure: {
+        executor: 'constant-arrival-rate',
+        startTime: `${WARMUP_S}s`,
+        rate: RATE,
+        timeUnit: '1s',
+        duration: `${DURATION_S}s`,
+        preAllocatedVUs: VUS,
+        maxVUs: VUS,
+        gracefulStop: '10s',
+      },
     }
-  : { executor: 'constant-vus', vus: VUS, duration: `${WARMUP_S + DURATION_S}s`, gracefulStop: '10s' };
+  : {
+      bench: { executor: 'constant-vus', vus: VUS, duration: `${WARMUP_S + DURATION_S}s`, gracefulStop: '10s' },
+    };
 
 export const options = {
-  scenarios: { bench: scenario },
+  scenarios,
   thresholds,
   summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(90)', 'p(95)', 'p(99)', 'count'],
   systemTags: ['status', 'method', 'scenario', 'tls_version', 'error', 'error_code', 'expected_response'],
@@ -132,7 +165,7 @@ const now = () => exec.instance.currentTestRunDuration;
 
 export default async function () {
   const tStart = now();
-  const measure = tStart >= WARMUP_MS;
+  const measure = OPEN ? exec.scenario.name === 'measure' : tStart >= WARMUP_MS;
   exec.vu.metrics.tags.phase = measure ? 'measure' : 'warmup';
   const iter = exec.scenario.iterationInTest;
   let encMs = '';
@@ -210,7 +243,7 @@ export function handleSummary(data) {
   out[`${OUT_DIR}/${RUN_ID}.summary.json`] = JSON.stringify(
     {
       run_id: RUN_ID, mode: MODE, size: SIZE, vus: VUS, warmup_s: WARMUP_S, duration_s: DURATION_S,
-      executor: EXECUTOR, rate: OPEN ? RATE : null, sample_every: SAMPLE_EVERY,
+      executor: EXECUTOR, rate: OPEN ? RATE : null, ramp_s: OPEN ? RAMP_S : null, sample_every: SAMPLE_EVERY,
       t0_epoch_ms: (data.setup_data || {}).t0_epoch_ms ?? null, k6: data,
     },
     null,
@@ -219,11 +252,12 @@ export function handleSummary(data) {
   const m = (k) => data.metrics[k] && data.metrics[k].values;
   const d = m(`http_req_duration${M}`) || {};
   const n = (m(`http_reqs${M}`) || {}).count || 0;
-  const dropped = (m('dropped_iterations') || {}).count ?? 0;
+  const dropped = (m(OPEN ? 'dropped_iterations{scenario:measure}' : 'dropped_iterations') || {}).count ?? 0;
+  const wDropped = OPEN ? ` warmup_dropped=${(m('dropped_iterations{scenario:warmup}') || {}).count ?? 0}` : '';
   out.stdout =
     `[${RUN_ID}] measured_reqs=${n} rps=${(n / DURATION_S).toFixed(1)} ` +
     `p50=${(d.med || 0).toFixed(3)}ms p95=${(d['p(95)'] || 0).toFixed(3)}ms p99=${(d['p(99)'] || 0).toFixed(3)}ms ` +
     `checks=${((m(`checks${M}`) || {}).rate ?? 'n/a')} integrity=${((m(`integrity_ok${M}`) || {}).rate ?? 'n/a')} ` +
-    `dropped=${dropped}\n`;
+    `dropped=${dropped}${wDropped}\n`;
   return out;
 }
