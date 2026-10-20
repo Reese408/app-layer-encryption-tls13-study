@@ -5,6 +5,20 @@ client_cpu_limit = 8.0   # must match compose.yaml k6.cpus
 api_cpu_limit = 2.0      # must match compose.yaml api-*.cpus
 client_saturation_threshold = 0.85   # flag runs where k6 CPU > 85% of its limit
 
+# R1 (approved 2026-10-20 after the pilot): recreate both API containers before every run,
+# wait for health + a TLS 1.3 readiness probe, then record an idle resource baseline before
+# k6 starts. k6 still runs its own warm-up. The pilot (2026-10-20) ran without this.
+restart_per_run = true
+idle_baseline_s = 2
+
+# R6 (approved 2026-10-20): deterministic systematic sample of individual measured requests.
+# A request is sampled when its global iteration index is divisible by K. K is odd (coprime
+# with the 4-item payload pool) and sized from pilot throughput so a 60 s run yields roughly
+# 3,000-15,000 samples. `cap` is a hard bound per run; truncation is recorded in runs.csv.
+[sampling]
+every = { "1k" = 101, "16k" = 25, "256k" = 3 }
+cap = 50000
+
 [profiles.smoke]
 modes = ["plain", "aead"]
 sizes = ["1k", "16k", "256k"]
@@ -14,7 +28,7 @@ warmup_s = 2
 duration_s = 5
 smoke = true             # k6 thresholds fail the run on any error/integrity failure
 
-[profiles.pilot]
+[profiles.pilot]         # executed 2026-10-20 (results/raw/20261020T154305Z-pilot), before R1/R6
 modes = ["plain", "aead"]
 sizes = ["1k", "16k", "256k"]
 vus = [1, 64]
@@ -23,10 +37,50 @@ warmup_s = 5
 duration_s = 20
 smoke = false
 
-[profiles.full]          # NOT to be run until the pilot has been reviewed
+# Validation of the revised pipeline (R1, R6) on a reduced closed-loop matrix.
+[profiles.validate-closed]
+modes = ["plain", "aead"]
+sizes = ["1k", "16k", "256k"]
+vus = [1, 64]
+reps = 2
+warmup_s = 5
+duration_s = 15
+smoke = false
+
+# Primary experiment: closed loop, 2 x 3 x 3 x 5 = 90 runs. Requires --allow-full.
+[profiles.full]
+gated = true
 modes = ["plain", "aead"]
 sizes = ["1k", "16k", "256k"]
 vus = [1, 16, 64]
+reps = 5
+warmup_s = 10
+duration_s = 60
+smoke = false
+
+# R3 (approved 2026-10-20 as a SEPARATE experiment, never pooled with the 90-run matrix):
+# open-loop fixed arrival rate. Rates are about 50% of the LOWER of the two configurations'
+# pilot capacity (aead, 64 VUs: 14,946 / 3,880 / 294 req/s), rounded down, so both
+# configurations are below capacity. `vus` is the pre-allocated VU pool, not concurrency.
+# Any dropped iteration fails the run (k6 exit 99).
+[profiles.validate-open]
+executor = "constant-arrival-rate"
+modes = ["plain", "aead"]
+sizes = ["1k", "16k", "256k"]
+rates = { "1k" = 7000, "16k" = 1900, "256k" = 140 }
+vus = [64]
+reps = 2
+warmup_s = 5
+duration_s = 15
+smoke = false
+
+[profiles.openloop]
+gated = true
+executor = "constant-arrival-rate"
+modes = ["plain", "aead"]
+sizes = ["1k", "16k", "256k"]
+rates = { "1k" = 7000, "16k" = 1900, "256k" = 140 }
+vus = [64]
 reps = 5
 warmup_s = 10
 duration_s = 60

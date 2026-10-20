@@ -135,10 +135,18 @@ class Sampler:
 
     def start(self) -> Sampler:
         for c in self.containers:
-            t = threading.Thread(target=self._stream, args=(c,), daemon=True)
-            t.start()
-            self._threads.append(t)
+            self._spawn(c)
         return self
+
+    def add(self, container: str) -> None:
+        """Start streaming one more container into the same CSV (e.g. k6, once it exists)."""
+        self.containers.append(container)
+        self._spawn(container)
+
+    def _spawn(self, container: str) -> None:
+        t = threading.Thread(target=self._stream, args=(container,), daemon=True)
+        t.start()
+        self._threads.append(t)
 
     def stop(self, timeout: float = 5.0) -> None:
         self._stop.set()

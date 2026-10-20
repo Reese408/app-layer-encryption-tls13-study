@@ -13,6 +13,11 @@ x-api: &api
     WORKLOAD_ROUNDS: "16"
     AEAD_KEY_FILE: /run/secrets/aead_keys
   restart: "no"
+  healthcheck:
+    # Same probe as the Dockerfile; during start-up it runs every 250 ms so readiness after a
+    # per-run restart is detected promptly (Docker Engine >= 25).
+    start_period: 30s
+    start_interval: 250ms
 
 services:
   api-plain:

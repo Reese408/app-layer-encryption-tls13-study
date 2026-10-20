@@ -1,4 +1,4 @@
-.PHONY: setup lint test up down validate smoke pilot bench analyze clean-adhoc
+.PHONY: setup lint test up down validate smoke pilot validate-pipeline bench openloop analyze stats check-run
 
 PY := uv run python
 
@@ -32,8 +32,21 @@ smoke: up         ## short run, fails on any error or integrity mismatch
 pilot: up
 	$(PY) scripts/run_matrix.py --profile pilot
 
-bench: up         ## full 90-run matrix (requires explicit confirmation flag)
+validate-pipeline: up   ## reduced closed- and open-loop runs exercising R1/R3/R6
+	$(PY) scripts/run_matrix.py --profile validate-closed
+	$(PY) scripts/run_matrix.py --profile validate-open
+
+bench: up         ## full 90-run closed-loop matrix (requires explicit confirmation flag)
 	$(PY) scripts/run_matrix.py --profile full --allow-full
+
+openloop: up      ## separate open-loop experiment, 30 runs (requires confirmation flag)
+	$(PY) scripts/run_matrix.py --profile openloop --allow-full
 
 analyze:          ## RUN=results/raw/<dir> (defaults to latest)
 	$(PY) analysis/aggregate.py $(RUN)
+
+stats:            ## RUN=results/raw/<dir>: paired run-level inference
+	$(PY) analysis/stats.py $(RUN)
+
+check-run:        ## RUN=results/raw/<dir>: acceptance criteria for the revised pipeline
+	$(PY) analysis/validate_pipeline.py $(RUN)
