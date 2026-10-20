@@ -345,10 +345,11 @@ def main() -> None:
     for run in order:
         r = run_k6(out_rel, run, prof, cfg, out / "resources.csv")
         rows.append(r)
-        summary = (out / f"{run['run_id']}.k6.log").read_text().strip().splitlines()
+        log = (out / f"{run['run_id']}.k6.log").read_text().splitlines()
+        line = next((x for x in reversed(log) if "measured_reqs=" in x), log[-1] if log else "")
         print(
             f"[{run['seq'] + 1}/{len(order)}] exit={r['k6_exit_code']} "
-            f"samples={r['resource_rows']}/{r['samples']} {summary[-1] if summary else ''}",
+            f"resource_rows={r['resource_rows']} request_samples={r['samples']} {line}",
             flush=True,
         )
         time.sleep(cfg["cooldown_s"])

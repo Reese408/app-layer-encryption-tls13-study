@@ -2,7 +2,7 @@
 
 # Application-Layer Authenticated Encryption over TLS 1.3: A Controlled Performance Study
 
-> **Status: Phase 2 complete; pilot under review.** The service, encryption layer, tests, and load generator are implemented, and a 24-run pilot has been executed. The full 90-run matrix has **not** been run; it is gated until the pilot is reviewed. Pilot findings are in [reports/pilot.md](reports/pilot.md). They are preliminary (two repetitions per cell, no significance testing).
+> **Status: pilot reviewed; revised pipeline under validation.** The service, encryption layer, tests, and load generator are implemented. A 24-run pilot was executed and reviewed ([reports/pilot.md](reports/pilot.md)), and the approved methodology refinements are implemented: per-run container restart, a separate open-loop experiment, a deterministic per-request sample, and paired run-level statistics. The full 90-run matrix has **not** been run; it is gated until the validation of the revised pipeline is approved.
 
 ## Abstract
 
@@ -60,13 +60,17 @@ Prerequisites: Docker Desktop with Compose v2+, [uv](https://docs.astral.sh/uv/)
 
 ```bash
 make setup        # venv, local CA/certs, AEAD keys, payload fixtures (all gitignored), images
-make test         # 53 unit, functional, cryptographic, and TLS 1.3 tests
+make test         # unit, functional, cryptographic, TLS 1.3, and analysis tests
 make up           # start both API configurations (https://localhost:8443 plain, :8444 aead)
 make validate     # TLS 1.3/1.2 negotiation evidence + resource-sampler validation
 make smoke        # 12 short runs; fails on any error or integrity mismatch
 make pilot        # 24-run pilot -> results/raw/<timestamp>-pilot/
+make validate-pipeline   # reduced closed- and open-loop runs exercising the revised pipeline
 make analyze      # tables for the latest run -> results/processed/<run>/  (RUN=<dir> to pick one)
-make bench        # full 90-run matrix (about 2 h); run only after pilot review
+make stats RUN=results/raw/<dir>       # paired run-level effect sizes, CIs, Holm correction
+make check-run RUN=results/raw/<dir>   # acceptance criteria (restart isolation, samples, drops)
+make bench        # Experiment A: full 90-run closed-loop matrix; gated (--allow-full)
+make openloop     # Experiment B: 30-run open-loop experiment; gated, analysed separately
 make down
 ```
 

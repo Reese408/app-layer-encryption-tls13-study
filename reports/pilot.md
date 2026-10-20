@@ -6,6 +6,7 @@
 | Code | commit `2d16056` (clean working tree, per `manifest.json`) |
 | Aggregation | `uv run python analysis/aggregate.py results/raw/20261020T154305Z-pilot` → `results/processed/20261020T154305Z-pilot/` |
 | Status | **Preliminary.** There are two repetitions per cell and no significance testing. These results are for checking the method, not for drawing conclusions. |
+| Review | Reviewed by the repository owner on 2026-10-20. R1, R3 (as a separate experiment), R5, and R6 (with limits) were approved. The resulting changes and their validation are in [§10](#10-post-review-methodology-refinements-2026-10-20). |
 
 ## 1. Purpose
 
@@ -134,12 +135,12 @@ Tail latency at 1 VU is the least stable measurement.
 
 | # | Problem | Resolution |
 |---|---|---|
-| P1 | k6 v2.3 has no `performance.now()`, so per-request client timers have 1 ms resolution | Per-request client timers are reported as means only. Client cost is measured as `iteration_duration − http_req_duration` and with a loop-timed microbenchmark. |
+| P1 | k6 v2.3 has no `performance.now()`, so per-request client timers have 1 ms resolution | In the pilot, per-request client timers are reported as means only. Client cost is measured as `iteration_duration − http_req_duration` and with a loop-timed microbenchmark. **Resolved after review (§10):** later runs use k6's monotonic sub-µs clock. |
 | P2 | k6 v2.3 rejects the `maxVersion` TLS option | Removed. TLS 1.3 is still enforced by k6 `minVersion`, the server's minimum version, and a per-request `tls_version` check. |
-| P3 | At more than 10⁴ req/s, per-request k6 CSV output would be about 10⁷ rows per run | Dropped. The k6 summary, whose percentiles are exact over all measured samples, is the raw record. **Open item for review.** |
+| P3 | At more than 10⁴ req/s, per-request k6 CSV output would be about 10⁷ rows per run | Dropped. The k6 summary, whose percentiles are exact over all measured samples, is the raw record. **Resolved after review (R6, §10):** a bounded, deterministic sample is added alongside the summary. |
 | P4 | k6 `handleSummary` runs in a separate JavaScript runtime, so the microbenchmark lost its module-level results | Results are now emitted as tagged k6 metrics |
 | P5 | The handler-level `app` timer includes awaiting the request body, so it absorbs queueing when the server is saturated. The first aggregation showed a misleading 1.0% crypto share at 256 KiB / 64 VUs. | The share is now computed against decrypt + work + encrypt. `app` is retained as raw data but not used as a denominator. |
-| P6 | **API memory depends on run history.** The aead container's first two runs peaked at 52–65 MiB, and later runs reached 130–153 MiB. The containers persist across runs. | **Not resolved.** Memory comparisons from the pilot are not valid. See R1. |
+| P6 | **API memory depends on run history.** The aead container's first two runs peaked at 52–65 MiB, and later runs reached 130–153 MiB. The containers persist across runs. | Memory comparisons from the pilot are not valid. **Addressed after review (R1, §10):** containers are recreated before every run. |
 | P7 | The client microbenchmark varies between sessions (256 KiB seal: 1.76 ms/op earlier versus 2.17 ms/op in the pilot) | Recorded. See R4. |
 | P8 | The first progress monitor matched per-run `exit=` text and reported completion early | Fixed by watching for the final exit line. The data was not affected. |
 
@@ -149,7 +150,7 @@ Tail latency at 1 VU is the least stable measurement.
 - **R2 (interpretation): report 1 VU as latency and 64 VUs as capacity.** Keep 16 VUs as planned. The smoke run already showed saturation at 8 VUs, so 16 VUs is expected to be server-bound too.
 - **R3 (optional design addition): an open-model run** (`constant-arrival-rate`) at a fixed rate below plain-mode capacity, for example 50%. This would measure latency overhead without queueing amplification. It needs approval because it adds cells.
 - **R4: run the client microbenchmark at both the start and the end of each session**, and report the spread.
-- **R5: keep 5 repetitions × 60 s.** p50 and throughput vary by less than 8% between repetitions. p99 at 1 VU varies by up to 55%, which the longer window and extra repetitions should reduce. Statistical tests (Mann–Whitney U with Holm correction) are planned for the full matrix.
+- **R5: keep 5 repetitions × 60 s.** p50 and throughput vary by less than 8% between repetitions. p99 at 1 VU varies by up to 55%, which the longer window and extra repetitions should reduce. Statistical tests (Mann–Whitney U with Holm correction) are planned for the full matrix. *(Superseded after review by the paired run-level analysis in §10.)*
 - **R6: decide on P3** (summary-only raw record versus a sampled or time-bucketed per-request export).
 
 Estimated full-matrix duration: 90 runs × about 77 s, or about 2 hours (about 2 h 10 min with R1).
@@ -161,3 +162,33 @@ Estimated full-matrix duration: 90 runs × about 77 s, or about 2 hours (about 2
 - A single-worker server, so these are per-process capacity figures.
 - No TLS-terminating intermediary is emulated, so the security benefit is argued from the threat model, not measured.
 - Static, pre-shared symmetric keys; no key agreement or rotation (see the threat model).
+
+## 10. Post-review methodology refinements (2026-10-20)
+
+### 10.1 Decisions
+
+| Item | Owner decision | Implementation |
+|---|---|---|
+| R1 | Approved: restart both API containers before every measured run, preserve warm-up, verify readiness, and record restart, warm-up, and measurement timestamps. | `scripts/run_matrix.py` recreates both containers (`--force-recreate --wait`). The health check runs every 250 ms during start-up (`compose.yaml`). A host probe over verified TLS 1.3 follows, then a 2 s idle baseline, then k6, with its unchanged warm-up. `runs.csv` records each timestamp and both container identities. |
+| R2 | Not separately decided. | The interpretation (1 VU for latency, 64 VUs for capacity) is kept for reporting. |
+| R3 | Approved as a **separate experiment**: a fixed arrival rate below the demonstrated capacity of both configurations. Record dropped iterations and the achieved rate. Never combine with the 90-run matrix. | `constant-arrival-rate` executor, profiles `validate-open` and `openloop` (gated). Rates are 7,000 / 1,900 / 140 requests/s, about 50% of the aead pilot capacity, which is the lower of the two. Dropped iterations fail the run. The `load` key (`a<rate>` versus `c<VUs>`) keeps the two experiments apart in every table. |
+| R4 | Not approved or requested. | Unchanged: the client microbenchmark runs once per session. |
+| R5 | Approved: keep the 90-run matrix, 5 repetitions, 60 s windows. | `experiment.toml` profile `full` is unchanged and still requires `--allow-full`. |
+| R6 | Approved with limits: keep the complete k6 summaries, and add a bounded, documented, preferably deterministic sample, clearly labelled. | Systematic 1-in-*K* sample by global iteration index (*K* = 101 / 25 / 3), with a cap of 50,000 per run and truncation recorded, written to `<run_id>.samples.csv`. Summaries are unchanged. |
+| Stats | Analyse independent run-level measurements, use the block structure, and report effect sizes, CIs, and the multiple-comparison method. | `analysis/stats.py`: paired by block, geometric-mean ratio with 95% and Bonferroni-simultaneous CIs, mean difference with 95% CI, Holm within each metric family, and exact sign-flip, Mann–Whitney, and Cliff's δ as robustness checks. The pre-specified method is in [research-design.md §5](../docs/research-design.md#5-statistical-analysis). |
+
+One further change was made without a separate decision, because it repairs an approved instrument rather than adding one: during the R6 work, `exec.instance.currentTestRunDuration` was found to be a monotonic clock with sub-µs resolution. The client encrypt and decrypt timers now use it instead of `Date.now()`, which resolves P1. Pilot client-timer *percentiles* are therefore not comparable with later runs. Their *means* remain usable. This can be reverted if the owner prefers the pilot instrument.
+
+### 10.2 Justification and resulting limitations
+
+See [research-design.md §4.1](../docs/research-design.md#41-refinements-approved-after-the-pilot-2026-10-20), which records each change's justification and the limitation it introduces. In summary:
+
+- **R1** removes run-history effects, at the cost of not measuring long-lived processes.
+- **R3** removes queueing amplification from the comparison, but the two modes run at different utilizations at the same arrival rate.
+- **R6** is a sample and is never reported as the population.
+- **The paired t-test** with *n* = 5 assumes approximately normal log ratios, and the permutation checks have a floor of p = 0.0625. A non-significant result is not evidence of no effect.
+
+### 10.3 Validation of the revised pipeline
+
+*Pending; filled in from the validation runs below.*
+

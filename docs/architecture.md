@@ -70,12 +70,23 @@ Replay protection *within* a route (nonce caches, timestamps) is out of scope fo
 | Request latency (send → last byte) | k6 `http_req_duration` | high resolution (Go timer) |
 | End-to-end client iteration | k6 `iteration_duration` (encrypt + request + decrypt + integrity check) | high resolution |
 | Client overhead | `iteration_duration − http_req_duration` (mean) | high resolution |
-| Client encrypt / decrypt per request | `Date.now()` around WebCrypto calls | **1 ms**: k6 has no `performance.now()`, so only means are interpretable |
+| Client encrypt / decrypt per request | `exec.instance.currentTestRunDuration` around WebCrypto calls | sub-microsecond, monotonic. The pilot used `Date.now()` (1 ms), so only its means are interpretable. |
 | Client crypto cost per operation | `k6/client_crypto_bench.js`, loop of N operations | about 1 µs effective |
 | Server decrypt / workload / encrypt / handler | `Server-Timing` (`perf_counter_ns`) | sub-microsecond |
 | CPU, memory | Docker Engine API stats stream, cumulative counters | ~1 Hz, exact over a window |
 
-Per-request k6 CSV output was planned, but it was **dropped after the probe run**. The service sustains more than 10⁴ requests per second, which would produce about 10⁷ rows per 60 s run. The k6 end-of-test summary keeps every measured sample in memory, so its percentiles are exact, and it is the raw per-run record.
+Full per-request k6 CSV output was planned, but it was **dropped after the probe run**. The service sustains more than 10⁴ requests per second, which would produce about 10⁷ rows per 60 s run. The k6 end-of-test summary keeps every measured sample in memory, so its percentiles are exact, and it remains the primary raw per-run record.
+
+After the pilot review (R6), a **bounded, deterministic sample** of individual requests was added. A measured request is sampled when its global iteration index (`exec.scenario.iterationInTest`) is divisible by *K*, where *K* depends on payload size (101, 25, and 3 for 1 KiB, 16 KiB, and 256 KiB). Each *K* is odd, so it is coprime with the four-item payload pool and the sample is not locked to one payload. The values are chosen to give roughly 3,000–15,000 samples per 60 s run, and a hard cap of 50,000 per run is enforced, with truncation recorded. Each sampled request contributes one line with its k6 timings, client encrypt and decrypt time, the server's `Server-Timing` stages, status, and integrity result. **The sample is not the complete request population.** It supports distributional plots and per-request breakdowns; all reported percentiles come from the k6 summary.
+
+### 6.1 Per-run protocol (after the pilot review, R1)
+
+1. Both API containers are recreated (`docker compose up --force-recreate --wait`). The health check runs every 250 ms during start-up.
+2. A host-side probe of `/healthz` over verified TLS 1.3 must succeed for both services.
+3. The resource sampler starts on the API under test, and a 2 s idle baseline is recorded.
+4. k6 starts. Its warm-up (10 s in the full matrix) is unchanged and is excluded from all measurements.
+
+`runs.csv` records each step: restart begin, healthy, and ready times; k6 launch; the k6 start time *t₀* together with the warm-up end and measurement end it implies; k6 exit; and the container ID, start time, and restart count of both API containers.
 
 ## 7. Data artifacts
 
@@ -84,9 +95,10 @@ Per-request k6 CSV output was planned, but it was **dropped after the probe run*
 | Run manifest (git SHA, versions, host, config, run order) | JSON | `results/raw/<ts>/manifest.json` |
 | k6 end-of-test summary per run | JSON | `results/raw/<ts>/<run-id>.summary.json` |
 | k6 stdout/stderr per run | text | `results/raw/<ts>/<run-id>.k6.log` |
-| Run index (ids, timing, exit codes) | CSV | `results/raw/<ts>/runs.csv` |
+| Run index (ids, restart/readiness/k6 timestamps, container IDs, exit codes, sample counts) | CSV | `results/raw/<ts>/runs.csv` |
+| Deterministic per-request sample (R6) | CSV | `results/raw/<ts>/<run-id>.samples.csv` |
 | Client-side crypto microbenchmark | JSON | `results/raw/<ts>/client_crypto_bench.json` |
 | TLS and sampler validation | text / JSON / CSV | `results/raw/<ts>-validation/` |
 | Container resource samples | CSV | `results/raw/<ts>/resources.csv` |
-| Aggregated tables | CSV / Markdown | `results/processed/` |
+| Aggregated tables, run-level statistics, pipeline validation | CSV / Markdown / JSON | `results/processed/<ts>/` (`aggregate.py`, `stats.py`, `validate_pipeline.py`) |
 | Figures | PNG + SVG | `reports/figures/` |
