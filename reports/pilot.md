@@ -203,5 +203,48 @@ See [research-design.md §4.1](../docs/research-design.md#41-refinements-approve
 3. A `caffeinate -s` assertion is held for the session.
 4. `validate_pipeline.py` has two new criteria: AC power at the start of each run, and k6 wall time no longer than warm-up + duration + 20 s, which detects a suspended host. Both were added before any data from the repeat was examined.
 
-**Repeat:** pending. The host must be on AC power with the lid open.
+**Closed-loop repeat: passed.** `results/raw/20261020T184550Z-validate-closed/` (commit `7392057`, clean tree, AC power): 24 runs, 2 blocks, 5 s warm-up, 15 s window.
+
+| Criterion | Result |
+|---|---|
+| Run health (k6 exit 0, no errors, integrity 1, warm-up present) | 24/24 |
+| R1 (a–e): new container IDs, restart count 0, start order, readiness before k6, idle baseline within ±15% | 24/24 each |
+| R6 (a–d): sample present, count within tolerance, valid rows, p50 within 5% and p95 within 10% | 24/24 each |
+| Host on AC power; no suspension | 24/24 each |
+| k6 CPU below 85% of its limit | 24/24 (maximum 35.7%) |
+
+- **Sample accuracy.** The worst sample-quantile errors are 0.68% at p50 and 6.56% at p95.
+- **Idle baselines.** These are 40.35–41.33 MiB for aead and 40.43–41.46 MiB for plain.
+- **Restart isolation compared with the pilot.** The range of peak API working set across the repetitions of a cell fell from a maximum of 78.3 MiB (median 11.3) in the pilot to a maximum of 12.2 MiB (median 2.4). The Spearman correlation between run order and peak working set changed from 0.28 to −0.11. These figures are computed with `aggregate.per_run`: the per-cell max − min of `api_mem_mib_max`, and `scipy.stats.spearmanr(seq, api_mem_mib_max)`.
+
+**Open loop: four attempts.** All four datasets are kept unmodified. Each attempt changed only the load generator's run structure, never the API under test. Each change was approved by the owner before the next attempt, and each new acceptance criterion was added before the data it applies to was collected.
+
+| Attempt | Dataset | Change | Runs passing | Finding |
+|---|---|---|---|---|
+| 1 | `20261020T185653Z-validate-open` (commit `9db2525`, flagged dirty; see note) | As designed: one `constant-arrival-rate` scenario, a 64-VU pool, *K* = 101/25/3 | 9/12 | 3 of 4 runs at 1 KiB / 7,000 req/s dropped 106–113 iterations. k6 reported "Insufficient VUs" at start-up, and each measured window still received its full count. One run's sample p95 was 11.3% off with *n* = 1,040. |
+| 2 | `20261020T221439Z-validate-open` (`99eeb6e`) | 1 KiB pool 128 VUs; 1 KiB *K* = 25 | 7/12 | All four 1 KiB runs dropped 46–197 iterations at start-up, so a larger pool did not help. The first run after the host changed to AC power (plain, 16 KiB) stalled during measurement: schedule lag reached 199 ms, 366 iterations were dropped, and the achieved rate was 98.7%. |
+| 3 | `20261020T224521Z-validate-open` (`e90fe96`) | Separate warm-up scenario (ramp 0 → rate) and measurement scenario. The warm-up was hard-stopped (`gracefulStop: 0`). Pool max(64, ⌈rate × 0.1 s⌉) = 700/190/64. | 9/12 | No drops in any run. Two instrument defects were found. (i) In aead runs, hard-stopping the warm-up left an interrupted asynchronous VU that afterwards completed iterations without sending a request: 32 of 2,100, 150 of 28,500, and 299 of 105,000, one or two VUs in the rotation. (ii) *K* = 25 with a 190-VU pool shares the factor 5, so only one VU in five was sampled; the sample p50 was biased by 8–11%. |
+| 4 | `20261020T225405Z-validate-open` (`7a6aa69`) | Warm-up ends 0.5 s early and drains in-flight iterations; open-loop *K* = 23/23/3, which the runner now requires to be coprime with 4 and with the pool; new criterion r3c (iterations = requests in the measurement window) | **11/12** | See below. |
+
+*Note on attempt 1.* Its manifest records `dirty: true`. Commit `9db2525` had included three files of the closed-loop validation dataset, which was then still running (`runs.csv`, `resources.csv`, and one run's files). That session kept appending to those tracked files, so `git status` was not clean when the open-loop profile started. No source or configuration file was edited between `9db2525` and the end of attempt 1. The next code change is commit `08b9745`, made after attempt 1 had finished.
+
+Diagnostic runs between attempts 2 and 4 were executed outside `run_matrix.py` and were not retained, because they wrote to a temporary directory. They are not used as evidence. The causes they indicated were confirmed in attempts 3 and 4. One diagnostic run showed a stall of about 40 ms: the slowest sampled requests took 39 ms while the server handler took 0.05 ms, which places the stall outside the application.
+
+**Attempt 4 in detail.**
+
+| Criterion | Result |
+|---|---|
+| Run health | 12/12 |
+| R1 (a–e) | 12/12 each |
+| R6 (a–c) | 12/12 each |
+| R6 (d) sample quantiles | **11/12** |
+| R3 (a) zero drops in the measurement window | 12/12 (warm-up drops: 0 in all runs) |
+| R3 (b) achieved rate within ±1% | 12/12 (0.99996–1.00048) |
+| R3 (c) one request per measured iteration | 12/12 |
+| Host on AC power; no suspension | 12/12 each |
+| k6 CPU below 85% of its limit | 12/12 (maximum 27.1%) |
+
+- **Schedule lag** of sampled iterations was at most 1.28 ms at p99.
+- **The failing run.** `002-aead-16k-a1900-r0` fails R6(d): its sample p95 is 11.29% from k6's exact p95, and the tolerance is 10%. The sample covers all 190 VUs. k6's exact p95 lies at the 95.48th percentile of the sample (*n* = 1,240), a rank deviation of +0.78 standard errors. Across all 12 runs, the rank deviations at p50 and p95 are between −1.17 and +2.22 standard errors. The failure is therefore consistent with sampling error. A small rank error in a steep tail becomes a large relative error in milliseconds, and this is largest for the shortened 15 s validation window. The 60 s experiment window gives about four times the sample.
+- **What was not done.** The criterion was not relaxed after the fact, and the validation was not repeated in the hope of a pass. Whether to accept this result, or to change R6(d) to a rank-based tolerance for future datasets, is left to the owner.
 

@@ -1,0 +1,4 @@
+[000-plain-16k-a1900-r0] measured_reqs=28503 rps=1900.2 p50=0.372ms p95=0.667ms p99=0.732ms checks=1 integrity=1 dropped=0 warmup_dropped=0
+time="2026-10-20T22:54:14Z" level=warning msg="There were unknown fields in the options exported in the script" error="json: unknown field \"minVersion\""
+time="2026-10-20T22:54:14Z" level=info msg="negotiated tls_version=tls1.3 cipher=TLS_AES_256_GCM_SHA384" source=console
+time="2026-10-20T22:54:19Z" level=info msg="negotiated tls_version=tls1.3 cipher=TLS_AES_256_GCM_SHA384" source=console

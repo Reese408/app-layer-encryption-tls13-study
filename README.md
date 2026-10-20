@@ -2,7 +2,7 @@
 
 # Application-Layer Authenticated Encryption over TLS 1.3: A Controlled Performance Study
 
-> **Status: pilot reviewed; revised pipeline under validation.** The service, encryption layer, tests, and load generator are implemented. A 24-run pilot was executed and reviewed ([reports/pilot.md](reports/pilot.md)), and the approved methodology refinements are implemented: per-run container restart, a separate open-loop experiment, a deterministic per-request sample, and paired run-level statistics. The full 90-run matrix has **not** been run; it is gated until the validation of the revised pipeline is approved.
+> **Status: pilot reviewed; revised pipeline validated, awaiting owner approval.** The service, encryption layer, tests, and load generator are implemented. A 24-run pilot was executed and reviewed ([reports/pilot.md](reports/pilot.md)), and the approved methodology refinements are implemented: per-run container restart, a separate open-loop experiment, a deterministic per-request sample, and paired run-level statistics. The validation results are in [reports/pilot.md §10.3](reports/pilot.md#103-validation-of-the-revised-pipeline): closed loop 24/24, and open loop 11/12 on the fourth attempt. The full 90-run matrix has **not** been run; it is gated until the owner approves the validation.
 
 ## Abstract
 

@@ -88,6 +88,19 @@ After the pilot review (R6), a **bounded, deterministic sample** of individual r
 
 `runs.csv` records each step: restart begin, healthy, and ready times; k6 launch; the k6 start time *t₀* together with the warm-up end and measurement end it implies; k6 exit; and the container ID, start time, and restart count of both API containers.
 
+### 6.2 Open-loop run structure (Experiment B)
+
+An open-loop run uses two consecutive k6 scenarios that share one pool of pre-allocated VUs:
+
+| Scenario | Executor | Time | Purpose |
+|---|---|---|---|
+| `warmup` | `ramping-arrival-rate` | 0 → ⌈warm-up/2⌉ s: rate ramps from 0 to the target; then the target rate until 0.5 s before the warm-up ends; then a 0.5 s drain (`gracefulStop`) | Opens TLS connections and warms the server without a start-up burst. Excluded from all measurements. |
+| `measure` | `constant-arrival-rate` | warm-up end → warm-up + duration | The measurement window. |
+
+- **Dropped iterations.** k6 tags `dropped_iterations` with the scenario, so measurement-window drops are counted exactly. They must be zero. Warm-up drops are recorded and reported.
+- **VU pool.** The pool is max(64, ⌈rate × 0.1 s⌉), which absorbs a 100 ms stall. An idle VU holds no connection.
+- **Draining the warm-up.** The warm-up must not hard-stop in-flight iterations. With `gracefulStop: 0`, an interrupted asynchronous (aead) iteration left its VU in a state in which every later iteration on it finished without sending a request. The validation criterion r3c (iterations = requests in the measurement window) detects this.
+
 ## 7. Data artifacts
 
 | Artifact | Format | Location |

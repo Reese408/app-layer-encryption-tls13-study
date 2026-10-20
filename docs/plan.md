@@ -33,7 +33,7 @@ Status markers: ☐ not started · ◐ in progress · ☑ done (verified by exec
 | 2.16 | Open-loop fixed-arrival-rate executor and profiles, kept apart from the closed-loop matrix (R3) | `k6/bench.js`, `experiment.toml` |
 | 2.17 | Deterministic, bounded per-request sample (R6) and a high-resolution client timer | `k6/bench.js`, `scripts/run_matrix.py` |
 | 2.18 | Paired run-level statistics and pre-specified acceptance checks | `analysis/stats.py`, `analysis/validate_pipeline.py`, `tests/test_analysis.py` |
-| ◐ | Validation of the revised pipeline (`make validate-pipeline`, `make check-run`) | `results/raw/*-validate-*` |
+| ☑ | Validation of the revised pipeline executed: closed loop 24/24; open loop 11/12 on the fourth attempt, with one R6(d) sample-quantile failure documented | `results/raw/*-validate-*`, `reports/pilot.md` §10.3 |
 | ☐ | **Owner approval of the validation** ← *current gate before the full matrix* | |
 
 ### Deviations from the Phase 1 design (recorded during implementation)
@@ -45,6 +45,8 @@ Status markers: ☐ not started · ◐ in progress · ☑ done (verified by exec
 5. **Statistical method** (post-pilot). The planned unpaired Mann–Whitney U test is replaced as the primary test by a paired run-level analysis (block-paired log ratios, *t*-based CIs, and Holm correction within each metric family). With 5 versus 5 runs, Mann–Whitney's smallest attainable p (≈ 0.008) leaves almost no room under Holm across 9 cells, and it ignores the randomized block structure. Mann–Whitney is kept as a robustness check. See research-design.md §5.
 6. **Client timer** (post-pilot). `exec.instance.currentTestRunDuration` (monotonic, sub-µs) replaces `Date.now()` for client encrypt and decrypt timing. This partly supersedes deviation 2.
 7. **Health check start interval** (post-pilot). `compose.yaml` sets `start_period: 30s` and `start_interval: 250ms`, so readiness after a per-run restart is detected in about 1 s rather than 5 s. After the first success, the 5 s interval from the Dockerfile applies, as in the pilot.
+
+8. **Open-loop run structure** (post-pilot, during validation; approved by the owner). After the first three open-loop validation attempts, the open-loop run was split into a ramped, drained warm-up scenario and a constant-rate measurement scenario. The VU pool was sized to absorb 100 ms stalls (700 / 190 / 64), and the open-loop sample interval was changed to 23 / 23 / 3. See architecture.md §6.2 and reports/pilot.md §10.3.
 
 ## Phase 3: Evidence
 
