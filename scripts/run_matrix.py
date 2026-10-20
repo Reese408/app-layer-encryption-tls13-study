@@ -260,7 +260,8 @@ def run_k6(out_rel: str, run: dict, prof: dict, cfg: dict, resources: Path) -> d
         with (out_dir / f"{run['run_id']}.samples.csv").open("w", newline="") as f:
             w = csv.writer(f)
             w.writerow(SAMPLE_FIELDS)
-            w.writerows(samples[:cap] if truncated else samples)
+            # Thin uniformly (every j-th row) rather than keeping the start of the run.
+            w.writerows(samples[:: -(-len(samples) // cap)] if truncated else samples)
     sh("docker", "rm", name)
 
     timing: dict = {}

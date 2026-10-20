@@ -148,6 +148,8 @@ def per_run(raw: Path, cfg: dict) -> pd.DataFrame:
     df["client_share_of_e2e"] = df.client_overhead_avg_ms / df.e2e_avg_ms
     df["k6_cpu_frac_of_limit"] = df.k6_cpu_pct / (cfg["client_cpu_limit"] * 100)
     df["client_saturated"] = df.k6_cpu_frac_of_limit > cfg["client_saturation_threshold"]
+    # A run counts as client-OK only if k6 CPU was measured AND is below the threshold.
+    df["client_ok"] = df.k6_cpu_frac_of_limit <= cfg["client_saturation_threshold"]
     # Single Uvicorn worker: the event loop is one thread, so ~100% of one core = saturated.
     df["server_saturated"] = df.api_cpu_pct > 90
     return df

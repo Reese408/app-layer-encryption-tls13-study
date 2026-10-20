@@ -25,10 +25,18 @@ def test_holm_matches_textbook_example():
     assert stats.holm(p) == pytest.approx([0.03, 0.06, 0.06, 0.02])
 
 
-def test_holm_ignores_nan():
+def test_holm_counts_untestable_hypotheses_towards_m():
+    # A NaN p still counts in the family (as p = 1), so the correction cannot loosen.
     out = stats.holm([0.02, float("nan"), 0.01])
     assert np.isnan(out[1])
-    assert out[0] == pytest.approx(0.02) and out[2] == pytest.approx(0.02)
+    assert out[2] == pytest.approx(0.03) and out[0] == pytest.approx(0.04)
+
+
+def test_holm_uses_planned_family_size():
+    # Two cells tested out of nine planned: multipliers are 9 and 8, not 2 and 1.
+    assert stats.holm([0.001, 0.004], m=9) == pytest.approx([0.009, 0.032])
+    with pytest.raises(ValueError):
+        stats.holm([0.1, 0.2, 0.3], m=2)
 
 
 def test_sign_flip_minimum_attainable_p():

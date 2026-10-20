@@ -17,8 +17,14 @@ Per cell and metric, with n = number of complete blocks:
               log ratio (minimum attainable 2 / 2^n); exact Mann-Whitney U p (unpaired,
               minimum attainable 2 / C(2n, n)); Cliff's delta (unpaired, range -1..1)
 
-H4 (Δ grows with payload size): for each load level, OLS slope of the per-block Δp50 (ms)
-against log2(payload bytes), with a 95% CI; Holm across load levels.
+H4 (Δ grows with payload size): for each load level and block, the OLS slope of Δp50 (ms)
+against log2(payload bytes); the block slopes are averaged, with a t-based 95% CI and
+one-sample t-test; Holm across load levels.
+
+Eligibility: only runs with k6 exit 0 and measured client CPU below the saturation
+threshold enter inference; exclusions are counted per cell. Family size for Holm is the
+planned number of cells, so lost or untestable cells make the correction stricter, never
+looser.
 
 Usage: analysis/stats.py results/raw/<dir>   -> results/processed/<dir>/stats.{csv,md}
 """
@@ -53,10 +59,18 @@ METRICS = [
 ]
 
 
-def holm(p: list[float]) -> list[float]:
-    """Holm-Bonferroni step-down adjusted p-values (NaN entries are ignored)."""
+def holm(p: list[float], m: int | None = None) -> list[float]:
+    """Holm-Bonferroni step-down adjusted p-values.
+
+    `m` is the planned family size. Hypotheses that are missing (cells without a complete
+    pair) or untestable (NaN p, e.g. zero-variance log ratios) still count towards m, which
+    is equivalent to giving them p = 1; the correction never becomes less strict because
+    data were lost. NaN inputs return NaN.
+    """
     idx = [i for i, x in enumerate(p) if not np.isnan(x)]
-    m = len(idx)
+    m = len(p) if m is None else m
+    if m < len(p):
+        raise ValueError("planned family size smaller than the number of hypotheses")
     out = [float("nan")] * len(p)
     running = 0.0
     for rank, i in enumerate(sorted(idx, key=lambda i: p[i])):
@@ -138,8 +152,22 @@ def paired(df: pd.DataFrame, metric: str) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def valid_runs(df: pd.DataFrame) -> pd.Series:
+    """Runs eligible for inference: k6 exit 0 and client CPU measured below the threshold.
+
+    In the open-loop experiment k6 exits 99 on any dropped iteration, so such runs are
+    excluded too. Exclusions are counted per cell in the output (`excluded_runs`) because
+    they can bias the surviving pairs if one mode is excluded more often.
+    """
+    return (df.k6_exit_code == 0) & df.client_ok.fillna(False).astype(bool)
+
+
 def analyze(df: pd.DataFrame) -> pd.DataFrame:
-    df = df[df.k6_exit_code == 0]
+    planned = df[["size", "load"]].drop_duplicates()
+    m_planned = len(planned)
+    ok = valid_runs(df)
+    excluded = df[~ok].groupby(["size", "load"]).size().rename("excluded_runs").reset_index()
+    df = df[ok]
     open_loop = (df.executor == "constant-arrival-rate").any()
     out = []
     for metric, family, role in METRICS:
@@ -148,8 +176,9 @@ def analyze(df: pd.DataFrame) -> pd.DataFrame:
         t = paired(df, metric)
         if t.empty:
             continue
-        m = len(t)
-        t["p_holm"] = holm(t.p_t.tolist())
+        # Planned family size: every cell of the design, whether or not it yielded a pair.
+        m = m_planned
+        t["p_holm"] = holm(t.p_t.tolist(), m)
         # Simultaneous (Bonferroni) CI for the ratio across the m cells of this family.
         sim = []
         for lr in t._lr:
@@ -161,6 +190,9 @@ def analyze(df: pd.DataFrame) -> pd.DataFrame:
         t.insert(1, "family", family)
         t.insert(2, "role", role)
         t.insert(3, "family_size", m)
+        t.insert(4, "cells_tested", len(t))
+        t = t.merge(excluded, on=["size", "load"], how="left")
+        t["excluded_runs"] = t.excluded_runs.fillna(0).astype(int)
         out.append(t.drop(columns="_lr"))
     res = pd.concat(out, ignore_index=True)
     res["pct_change"] = (res.ratio - 1) * 100
@@ -171,31 +203,48 @@ def analyze(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def size_trend(df: pd.DataFrame) -> pd.DataFrame:
-    """H4: slope of per-block Δp50 (ms) on log2(payload bytes), per load level."""
-    df = df[df.k6_exit_code == 0]
+    """H4: slope of Δp50 (ms) on log2(payload bytes), per load level, respecting blocks.
+
+    Within each block, the OLS slope of Δp50 = aead - plain across the payload sizes is
+    computed. The block slopes are the independent observations: their mean is the
+    estimate, with a t-based 95% CI and a one-sample t-test (df = blocks - 1). Pooling all
+    block x size points into one regression would treat points from the same block as
+    independent and understate the uncertainty.
+    """
+    df = df[valid_runs(df)]
     rows = []
     for load, g in df.groupby("load"):
         w = g.pivot_table(index=["rep", "size"], columns="mode", values="lat_p50_ms").dropna()
-        if len(w) < 3 or w.index.get_level_values("size").nunique() < 2:
+        slopes = []
+        for _, b in w.groupby(level="rep"):
+            sizes = b.index.get_level_values("size")
+            if sizes.nunique() < 2:
+                continue
+            x = np.log2([SIZE_BYTES[s] for s in sizes])
+            slopes.append(np.polyfit(x, (b["aead"] - b["plain"]).to_numpy(float), 1)[0])
+        if not slopes:
             continue
-        x = np.log2([SIZE_BYTES[s] for s in w.index.get_level_values("size")])
-        y = (w["aead"] - w["plain"]).to_numpy(float)
-        r = stats.linregress(x, y)
-        h = stats.t.ppf(0.975, len(x) - 2) * r.stderr
+        sl = np.array(slopes)
+        lo, hi = t_ci(sl, 0.95)
+        p = (
+            float(stats.ttest_1samp(sl, 0.0).pvalue)
+            if len(sl) >= 2 and sl.std(ddof=1) > 0
+            else float("nan")
+        )
         rows.append(
             {
                 "load": load,
                 "load_order": g.load_order.iloc[0],
-                "n_points": len(x),
-                "slope_ms_per_doubling": r.slope,
-                "slope_ci95_lo": r.slope - h,
-                "slope_ci95_hi": r.slope + h,
-                "p_slope": r.pvalue,
+                "n_blocks": len(sl),
+                "slope_ms_per_doubling": float(sl.mean()),
+                "slope_ci95_lo": lo,
+                "slope_ci95_hi": hi,
+                "p_slope": p,
             }
         )
     t = pd.DataFrame(rows)
     if not t.empty:
-        t["p_holm"] = holm(t.p_slope.tolist())
+        t["p_holm"] = holm(t.p_slope.tolist(), df.load.nunique())
         t = t.sort_values("load_order")
     return t
 
@@ -242,12 +291,12 @@ def to_markdown(res: pd.DataFrame, trend: pd.DataFrame, raw: Path) -> str:
         lines += [
             "## H4: Δp50 vs payload size (OLS on log2 bytes, per load level)",
             "",
-            "| load | points | slope (ms per doubling) | CI95 | p | p_Holm |",
+            "| load | blocks | slope (ms per doubling) | CI95 | p | p_Holm |",
             "|---|---|---|---|---|---|",
         ]
         for r in trend.itertuples():
             lines.append(
-                f"| {r.load} | {r.n_points} | {f(r.slope_ms_per_doubling, 4)} | "
+                f"| {r.load} | {r.n_blocks} | {f(r.slope_ms_per_doubling, 4)} | "
                 f"[{f(r.slope_ci95_lo, 4)}, {f(r.slope_ci95_hi, 4)}] | {f(r.p_slope, 4)} | "
                 f"{f(r.p_holm, 4)} |"
             )

@@ -1,4 +1,4 @@
-.PHONY: setup lint test up down validate smoke pilot validate-pipeline bench openloop analyze stats check-run
+.PHONY: setup lint test up down validate smoke pilot validate-pipeline bench openloop analyze stats check-run dashboard
 
 PY := uv run python
 
@@ -50,3 +50,6 @@ stats:            ## RUN=results/raw/<dir>: paired run-level inference
 
 check-run:        ## RUN=results/raw/<dir>: acceptance criteria for the revised pipeline
 	$(PY) analysis/validate_pipeline.py $(RUN)
+
+dashboard:        ## RUNS="results/raw/<dir> ..." -> results/processed/dashboard/index.html
+	$(PY) analysis/dashboard.py $(RUNS)

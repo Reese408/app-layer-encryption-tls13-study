@@ -19,7 +19,8 @@ evaluated per run, and the script exits non-zero if any run fails any criterion.
   R3 open loop (a) dropped_iterations == 0 (whole run, including warm-up)
                (b) achieved request rate within ±1% of the target
                (informative) schedule lag of sampled iterations, p99 relative to minimum
-  client       k6 CPU below the saturation threshold (`client_saturation_threshold`)
+  client       k6 CPU measured and below the saturation threshold
+               (`client_saturation_threshold`); missing k6 CPU samples fail
   host         (added 2026-10-20 after a host sleep interrupted the first validation attempt,
                before any data from the repeat was examined) host on AC power at run start, and
                k6 wall time (launch -> exit) <= warm-up + duration + 20 s, which detects a
@@ -59,7 +60,9 @@ def main() -> None:
     cfg = tomllib.loads((ROOT / "experiment.toml").read_text())
     runs_meta = pd.read_csv(raw / "runs.csv")
     df = per_run(raw, cfg).set_index("run_id")
-    restart = bool(cfg.get("restart_per_run")) and "plain_container_id" in runs_meta
+    manifest = json.loads((raw / "manifest.json").read_text())
+    # Use the configuration recorded for this dataset, not the current experiment.toml.
+    restart = bool(manifest["config"].get("restart_per_run"))
     idle_median = df.groupby("mode").api_idle_mem_mib.median()
 
     results = []
@@ -82,7 +85,9 @@ def main() -> None:
             and total_reqs - measured > 0
         )
 
-        if restart:
+        if restart and "plain_container_id" not in runs_meta:
+            c["r1_fields_present"] = False  # restart was configured but not recorded
+        elif restart:
             ids = {meta.plain_container_id, meta.aead_container_id}
             c["r1a_new_containers"] = not (ids & seen_ids)
             seen_ids |= ids
@@ -137,7 +142,8 @@ def main() -> None:
         wall_s = (ts_ns(meta.k6_exit_utc) - ts_ns(meta.k6_launch_utc)) / 1e9
         c["host_no_suspension"] = bool(wall_s <= doc["warmup_s"] + doc["duration_s"] + 20)
         c["k6_wall_s"] = round(wall_s, 2)
-        c["client_not_saturated"] = bool(not r.client_saturated)
+        # Unknown k6 CPU (no resource samples) fails: absence of evidence is not a pass.
+        c["client_not_saturated"] = bool(r.client_ok)
         c["k6_cpu_frac_of_limit"] = round(float(r.k6_cpu_frac_of_limit), 4)
         c["api_cpu_pct"] = round(float(r.api_cpu_pct), 1)
         c["api_mem_mib_max"] = round(float(r.api_mem_mib_max), 1)
@@ -146,13 +152,20 @@ def main() -> None:
         prev = meta
 
     res = pd.DataFrame(results)
-    bool_cols = [col for col in res.columns if res[col].dtype == bool and col != "pass"]
+    bool_cols = [
+        col
+        for col in res.columns
+        if col not in ("pass", "mode", "run_id")
+        and res[col].dropna().map(lambda v: isinstance(v, bool | np.bool_)).all()
+        and res[col].notna().any()
+    ]
     summary = {
         "raw": raw.name,
         "runs": len(res),
         "runs_passing": int(res["pass"].sum()),
         "criteria": {
-            col: f"{int(res[col].sum())}/{int(res[col].notna().sum())}" for col in bool_cols
+            col: f"{int(res[col].dropna().astype(bool).sum())}/{int(res[col].notna().sum())}"
+            for col in bool_cols
         },
         "k6_cpu_frac_of_limit_max": float(res.k6_cpu_frac_of_limit.max()),
     }

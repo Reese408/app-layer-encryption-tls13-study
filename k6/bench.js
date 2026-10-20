@@ -22,8 +22,10 @@
 //
 // Per-request sample (SAMPLE_EVERY=K > 0): every measured iteration whose global index
 // (exec.scenario.iterationInTest) is divisible by K is written to the log as one `S,` line.
-// This is deterministic systematic sampling, about 1/K of measured requests. K is chosen
-// coprime with the fixture pool size (4) so the sample is not locked to one payload item.
+// This is deterministic systematic sampling, about 1/K of measured requests. K is odd, hence
+// coprime with the fixture pool size (4): with one VU (where the global and per-VU indices
+// coincide) the sample therefore cycles through all payload items instead of locking to one.
+// With several VUs the item depends on each VU's own iteration count and is mixed anyway.
 // The sample is NOT the full request population; exact percentiles come from the summary.
 import http from 'k6/http';
 import exec from 'k6/execution';
