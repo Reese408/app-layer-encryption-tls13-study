@@ -40,3 +40,4 @@ ignore = ["S101"]
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S"]
 "scripts/*" = ["S603", "S607"]
+"analysis/*" = ["E501"]  # Markdown table literals
