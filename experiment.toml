@@ -1,0 +1,33 @@
+# Single source of truth for benchmark parameters. Recorded verbatim in every run manifest.
+seed = 20261020          # run-order randomization seed (payload seed lives in gen_payloads.py)
+cooldown_s = 3           # idle time between runs
+client_cpu_limit = 8.0   # must match compose.yaml k6.cpus
+api_cpu_limit = 2.0      # must match compose.yaml api-*.cpus
+client_saturation_threshold = 0.85   # flag runs where k6 CPU > 85% of its limit
+
+[profiles.smoke]
+modes = ["plain", "aead"]
+sizes = ["1k", "16k", "256k"]
+vus = [1, 8]
+reps = 1
+warmup_s = 2
+duration_s = 5
+smoke = true             # k6 thresholds fail the run on any error/integrity failure
+
+[profiles.pilot]
+modes = ["plain", "aead"]
+sizes = ["1k", "16k", "256k"]
+vus = [1, 64]
+reps = 2
+warmup_s = 5
+duration_s = 20
+smoke = false
+
+[profiles.full]          # NOT to be run until the pilot has been reviewed
+modes = ["plain", "aead"]
+sizes = ["1k", "16k", "256k"]
+vus = [1, 16, 64]
+reps = 5
+warmup_s = 10
+duration_s = 60
+smoke = false
