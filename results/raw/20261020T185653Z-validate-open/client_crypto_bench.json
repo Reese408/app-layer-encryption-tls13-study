@@ -1,0 +1,21 @@
+{
+ "unit": "ms/op",
+ "method": "Date.now() total / N, single VU, after 200-op warm-up",
+ "results": {
+  "1k": {
+   "n": 20000,
+   "seal_ms_per_op": 0.0261,
+   "open_ms_per_op": 0.016
+  },
+  "16k": {
+   "n": 5000,
+   "seal_ms_per_op": 0.1388,
+   "open_ms_per_op": 0.0608
+  },
+  "256k": {
+   "n": 400,
+   "seal_ms_per_op": 1.81,
+   "open_ms_per_op": 0.635
+  }
+ }
+}

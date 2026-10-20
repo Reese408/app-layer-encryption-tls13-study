@@ -210,7 +210,9 @@ def recreate_apis() -> dict:
 def run_k6(out_rel: str, run: dict, prof: dict, cfg: dict, resources: Path) -> dict:
     out_dir = ROOT / "results" / "raw" / out_rel
     name = f"aead-study-k6-{run['run_id']}"
-    sample_every = int(cfg.get("sampling", {}).get("every", {}).get(run["size"], 0))
+    # A profile may override the global sampling interval per size (open loop: lower rates).
+    every = prof.get("sample_every") or cfg.get("sampling", {}).get("every", {})
+    sample_every = int(every.get(run["size"], 0))
     env = {
         "MODE": run["mode"],
         "SIZE": run["size"],
@@ -294,6 +296,7 @@ def run_k6(out_rel: str, run: dict, prof: dict, cfg: dict, resources: Path) -> d
 def build_order(cfg: dict, profile: str, prof: dict) -> list[dict]:
     executor = prof.get("executor", "constant-vus")
     rates = prof.get("rates", {})
+    pool = prof.get("pool", {})  # open loop: per-size pre-allocated VU pool, overrides `vus`
     cells = list(itertools.product(prof["modes"], prof["sizes"], prof["vus"]))
     order: list[dict] = []
     for rep in range(prof["reps"]):
@@ -303,6 +306,7 @@ def build_order(cfg: dict, profile: str, prof: dict) -> list[dict]:
             i = len(order)
             rate = rates.get(size) if executor == "constant-arrival-rate" else None
             load = f"a{rate}" if rate else f"c{vus}"
+            vus = pool.get(size, vus) if rate else vus
             order.append(
                 {
                     "seq": i,

@@ -70,6 +70,12 @@ modes = ["plain", "aead"]
 sizes = ["1k", "16k", "256k"]
 rates = { "1k" = 7000, "16k" = 1900, "256k" = 140 }
 vus = [64]
+# Approved 2026-10-20 after the first open-loop validation (20261020T185653Z-validate-open), in
+# which 3 of 4 runs at 1k / 7,000 req/s dropped 106-113 iterations at start-up ("Insufficient
+# VUs, reached 64") although the measured rate was on target. The 1k pool is doubled, and the
+# 1k sample interval is reduced so the open-loop 1k sample is about 4,000 requests, not 1,040.
+pool = { "1k" = 128, "16k" = 64, "256k" = 64 }
+sample_every = { "1k" = 25, "16k" = 25, "256k" = 3 }
 reps = 2
 warmup_s = 5
 duration_s = 15
@@ -82,6 +88,8 @@ modes = ["plain", "aead"]
 sizes = ["1k", "16k", "256k"]
 rates = { "1k" = 7000, "16k" = 1900, "256k" = 140 }
 vus = [64]
+pool = { "1k" = 128, "16k" = 64, "256k" = 64 }   # as validate-open
+sample_every = { "1k" = 25, "16k" = 25, "256k" = 3 }
 reps = 5
 warmup_s = 10
 duration_s = 60
