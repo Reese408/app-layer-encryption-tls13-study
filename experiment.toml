@@ -4,6 +4,7 @@ cooldown_s = 3           # idle time between runs
 client_cpu_limit = 8.0   # must match compose.yaml k6.cpus
 api_cpu_limit = 2.0      # must match compose.yaml api-*.cpus
 client_saturation_threshold = 0.85   # flag runs where k6 CPU > 85% of its limit
+require_ac_power = true  # abort before any run if the host is on battery (macOS pmset)
 
 # R1 (approved 2026-10-20 after the pilot): recreate both API containers before every run,
 # wait for health + a TLS 1.3 readiness probe, then record an idle resource baseline before

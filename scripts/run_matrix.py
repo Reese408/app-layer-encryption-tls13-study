@@ -26,6 +26,7 @@ import hashlib
 import http.client
 import itertools
 import json
+import os
 import platform
 import random
 import re
@@ -77,6 +78,24 @@ def utcnow() -> str:
 
 def sha256_file(p: Path) -> str:
     return hashlib.sha256(p.read_bytes()).hexdigest()
+
+
+def power_source() -> str:
+    """'AC Power' or 'Battery Power' on macOS (first line of `pmset -g batt`), else ''."""
+    out = sh("pmset", "-g", "batt", check=False)
+    m = re.search(r"'([^']+)'", out.splitlines()[0]) if out else None
+    return m.group(1) if m else ""
+
+
+def write_runs(path: Path, rows: list[dict]) -> None:
+    """Rewrite runs.csv after every run, so an interrupted session keeps its run index."""
+    fields: list[str] = []
+    for r in rows:
+        fields += [k for k in r if k not in fields]
+    with path.open("w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=fields, restval="")
+        w.writeheader()
+        w.writerows(rows)
 
 
 def split_k6_log(text: str) -> tuple[str, list[list[str]]]:
@@ -207,6 +226,9 @@ def run_k6(out_rel: str, run: dict, prof: dict, cfg: dict, resources: Path) -> d
     }
     env_args = list(itertools.chain.from_iterable(("-e", f"{k}={v}") for k, v in env.items()))
 
+    power = power_source()
+    if cfg.get("require_ac_power") and power != "AC Power":
+        raise RuntimeError(f"host not on AC power ({power or 'unknown'}); aborting before run")
     restart = recreate_apis() if cfg.get("restart_per_run") else {}
     sampler = Sampler(resources, run["run_id"], [API_CONTAINER[run["mode"]]]).start()
     time.sleep(cfg.get("idle_baseline_s", 0))
@@ -255,6 +277,7 @@ def run_k6(out_rel: str, run: dict, prof: dict, cfg: dict, resources: Path) -> d
             }
     return {
         **run,
+        "power_source": power,
         **restart,
         "k6_launch_utc": started,
         **timing,
@@ -306,6 +329,10 @@ def main() -> None:
     if prof.get("executor") == "constant-arrival-rate" and set(prof["sizes"]) - set(prof["rates"]):
         sys.exit("open-loop profile needs a rate for every size")
 
+    if cfg.get("require_ac_power") and power_source() != "AC Power":
+        sys.exit(f"host not on AC power ({power_source() or 'unknown'}); connect power first")
+    # Hold a no-sleep assertion for this process's lifetime (effective on AC power only).
+    caffeinate = subprocess.Popen(["caffeinate", "-s", "-w", str(os.getpid())])  # noqa: S607
     sh("docker", "compose", "up", "-d", "--wait", "api-plain", "api-aead")
     order = build_order(cfg, args.profile, prof)
 
@@ -341,10 +368,16 @@ def main() -> None:
         "/scripts/client_crypto_bench.js",
     )
 
-    rows = []
+    rows: list[dict] = []
     for run in order:
-        r = run_k6(out_rel, run, prof, cfg, out / "resources.csv")
+        try:
+            r = run_k6(out_rel, run, prof, cfg, out / "resources.csv")
+        except RuntimeError as e:
+            write_runs(out / "runs.csv", rows)
+            caffeinate.terminate()
+            sys.exit(f"aborted at run {run['run_id']}: {e} ({len(rows)} runs recorded)")
         rows.append(r)
+        write_runs(out / "runs.csv", rows)
         log = (out / f"{run['run_id']}.k6.log").read_text().splitlines()
         line = next((x for x in reversed(log) if "measured_reqs=" in x), log[-1] if log else "")
         print(
@@ -354,10 +387,7 @@ def main() -> None:
         )
         time.sleep(cfg["cooldown_s"])
 
-    with (out / "runs.csv").open("w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=list(rows[0]))
-        w.writeheader()
-        w.writerows(rows)
+    caffeinate.terminate()
     failed = [r["run_id"] for r in rows if r["k6_exit_code"] != 0]
     print(f"done: {len(rows)} runs, {len(failed)} non-zero k6 exits {failed or ''}")
     sys.exit(1 if failed else 0)

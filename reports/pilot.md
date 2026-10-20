@@ -190,5 +190,18 @@ See [research-design.md §4.1](../docs/research-design.md#41-refinements-approve
 
 ### 10.3 Validation of the revised pipeline
 
-*Pending; filled in from the validation runs below.*
+**First attempt: interrupted and excluded.** `results/raw/20261020T173307Z-validate-closed/` (commit `db8706c`) stopped after 18 of 24 runs:
+
+- **What happened.** The host's lid was closed at 17:40:25 UTC. macOS entered clamshell sleep on battery, and the system stayed asleep, apart from brief maintenance wakes, until 18:10:10 UTC (`pmset -g log`). Run 18 started after the wake, on battery, and the session was then stopped manually. The open-loop profile never started.
+- **Why it is excluded.** The orchestrator wrote `runs.csv` only at the end of a session. The interrupted directory therefore has no run index, and with it no restart or readiness timestamps or container identities, so the R1 criteria cannot be evaluated.
+- **What was kept.** The directory is kept unmodified, because raw results are append-only, and it is excluded from all evidence. The completed runs did exit 0. An informal look at four early runs showed sample counts within 0.3 of the expected values and sample p50 within 0.3% of k6's exact p50. That observation is not used as evidence.
+
+**Fixes made before the repeat:**
+
+1. `runs.csv` is rewritten after every run.
+2. Each run checks the power source and aborts if the host is not on AC power (`require_ac_power`).
+3. A `caffeinate -s` assertion is held for the session.
+4. `validate_pipeline.py` has two new criteria: AC power at the start of each run, and k6 wall time no longer than warm-up + duration + 20 s, which detects a suspended host. Both were added before any data from the repeat was examined.
+
+**Repeat:** pending. The host must be on AC power with the lid open.
 

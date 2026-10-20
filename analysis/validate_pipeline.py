@@ -20,6 +20,10 @@ evaluated per run, and the script exits non-zero if any run fails any criterion.
                (b) achieved request rate within ±1% of the target
                (informative) schedule lag of sampled iterations, p99 relative to minimum
   client       k6 CPU below the saturation threshold (`client_saturation_threshold`)
+  host         (added 2026-10-20 after a host sleep interrupted the first validation attempt,
+               before any data from the repeat was examined) host on AC power at run start, and
+               k6 wall time (launch -> exit) <= warm-up + duration + 20 s, which detects a
+               suspended host or VM
 
 Usage: analysis/validate_pipeline.py results/raw/<dir>
   -> results/processed/<dir>/validation.{json,md}
@@ -129,6 +133,10 @@ def main() -> None:
                 lag = s.t_ms - s.iter * 1000.0 / r.target_rate
                 c["sched_lag_p99_ms"] = round(float((lag - lag.min()).quantile(0.99)), 3)
 
+        c["host_ac_power"] = str(meta.get("power_source", "")) == "AC Power"
+        wall_s = (ts_ns(meta.k6_exit_utc) - ts_ns(meta.k6_launch_utc)) / 1e9
+        c["host_no_suspension"] = bool(wall_s <= doc["warmup_s"] + doc["duration_s"] + 20)
+        c["k6_wall_s"] = round(wall_s, 2)
         c["client_not_saturated"] = bool(not r.client_saturated)
         c["k6_cpu_frac_of_limit"] = round(float(r.k6_cpu_frac_of_limit), 4)
         c["api_cpu_pct"] = round(float(r.api_cpu_pct), 1)
