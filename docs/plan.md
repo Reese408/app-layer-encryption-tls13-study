@@ -8,9 +8,9 @@ Status markers: ☐ not started · ◐ in progress · ☑ done (verified by exec
 - ☑ Research design, hypotheses, and controlled variables ([research-design.md](research-design.md))
 - ☑ Architecture ([architecture.md](architecture.md)) and threat model ([threat-model.md](threat-model.md))
 - ☑ README.md, AGENTS.md, repository skeleton
-- ☐ **Plan review and approval by the repository owner** ← *current gate*
+- ☑ Plan review and approval by the repository owner (2026-10-20: defaults D1–D5 accepted, with a pilot before the full matrix)
 
-## Phase 2: Minimum experiment
+## Phase 2: Minimum experiment (☑ implemented on branch `phase-2-minimum-experiment`, PR #1)
 
 | # | Deliverable | Files |
 |---|---|---|
@@ -19,12 +19,23 @@ Status markers: ☐ not started · ◐ in progress · ☑ done (verified by exec
 | 2.3 | AEAD key generation (two directional keys plus a key ID) | `scripts/gen_keys.py` |
 | 2.4 | FastAPI service with the deterministic workload and a TLS 1.3-only launcher | `app/main.py`, `app/workload.py`, `app/server.py` |
 | 2.5 | AES-256-GCM envelope module (seal/open, AAD, usage ceiling, generic errors) | `app/crypto_envelope.py` |
-| 2.6 | `Server-Timing` instrumentation middleware | `app/timing.py` |
+| 2.6 | `Server-Timing` stage instrumentation (in the request handler) | `app/main.py` |
 | 2.7 | Dockerfile and Compose file (two services, same image, equal limits, secrets) | `Dockerfile`, `compose.yaml` |
 | 2.8 | k6 scripts sharing one scenario, mode switched by environment (WebCrypto AES-GCM on the client in aead mode) | `k6/bench.js`, `k6/lib/envelope.js` |
 | 2.9 | Tests: envelope round trip, tamper/AAD/wrong-key rejection, nonce uniqueness, usage ceiling, no-secret-in-logs, TLS 1.3 enforcement, plain/aead functional equivalence | `tests/` |
 | 2.10 | Run orchestrator, randomized order, manifest, raw export | `scripts/run_matrix.py`, `scripts/sample_resources.py` |
 | 2.11 | Makefile targets | `Makefile` |
+| 2.12 | Validation evidence (TLS negotiation, sampler accuracy) | `scripts/validate_env.py`, `scripts/validate_sampler.py` |
+| 2.13 | Client-side crypto microbenchmark | `k6/client_crypto_bench.js` |
+| 2.14 | Smoke (12 runs) and pilot (24 runs) executed; per-run aggregation | `experiment.toml`, `analysis/aggregate.py`, `reports/pilot.md` |
+| ☐ | **Owner review of the pilot** ← *current gate before the full matrix* | |
+
+### Deviations from the Phase 1 design (recorded during implementation)
+
+1. **Per-request k6 CSV dropped.** At more than 10⁴ requests per second it would produce about 10⁷ rows per run. The k6 end-of-test summary, whose percentiles are exact over all measured samples, is the raw per-run record.
+2. **Client-side crypto timing.** k6 v2.3 has no `performance.now()`. Per-request client encrypt/decrypt timers have 1 ms resolution and are reported as means only. A high-resolution figure comes from `iteration_duration − http_req_duration` and from a loop-timed microbenchmark.
+3. **TLS max version option.** k6 v2.3 rejects `maxVersion`. TLS 1.3 is enforced by k6's `minVersion`, by the server's `minimum_version`, and by a per-request `tls_version` check.
+4. **Payload fixtures** are regenerated deterministically and not committed. Their SHA-256 hashes are recorded in each run manifest.
 
 ## Phase 3: Evidence
 

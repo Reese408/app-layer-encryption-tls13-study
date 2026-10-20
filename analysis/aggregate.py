@@ -94,6 +94,9 @@ def per_run(raw: Path, cfg: dict) -> pd.DataFrame:
             }
         )
     df = pd.DataFrame(rows)
+    # CPU-milliseconds the API process spends per completed request (from measured CPU and rps).
+    df["api_cpu_ms_per_req"] = df.api_cpu_pct / 100 * 1000 / df.rps
+    df["client_share_of_e2e"] = df.client_overhead_avg_ms / df.e2e_avg_ms
     df["k6_cpu_frac_of_limit"] = df.k6_cpu_pct / (cfg["client_cpu_limit"] * 100)
     df["client_saturated"] = df.k6_cpu_frac_of_limit > cfg["client_saturation_threshold"]
     # Single Uvicorn worker: the event loop is one thread, so ~100% of one core = saturated.
@@ -130,7 +133,15 @@ def compare(cells: pd.DataFrame) -> pd.DataFrame:
     c["plain_rps"], c["aead_rps"] = p.rps, a.rps
     c["delta_rps_pct"] = (a.rps / p.rps - 1) * 100
     c["aead_srv_crypto_ms"] = a.srv_dec_avg_ms + a.srv_enc_avg_ms
-    c["aead_srv_crypto_share_of_app_pct"] = c.aead_srv_crypto_ms / a.srv_app_avg_ms * 100
+    # Denominator excludes `app`, which includes awaiting the request body and therefore
+    # absorbs event-loop queueing when the server is saturated.
+    c["aead_srv_crypto_share_of_compute_pct"] = (
+        c.aead_srv_crypto_ms / (c.aead_srv_crypto_ms + a.srv_work_avg_ms) * 100
+    )
+    c["plain_api_cpu_ms_per_req"] = p.api_cpu_ms_per_req
+    c["aead_api_cpu_ms_per_req"] = a.api_cpu_ms_per_req
+    c["delta_api_cpu_ms_per_req"] = a.api_cpu_ms_per_req - p.api_cpu_ms_per_req
+    c["aead_client_share_of_e2e_pct"] = a.client_share_of_e2e * 100
     c["plain_client_overhead_ms"], c["aead_client_overhead_ms"] = (
         p.client_overhead_avg_ms,
         a.client_overhead_avg_ms,
@@ -172,16 +183,19 @@ def to_markdown(cmp: pd.DataFrame, cells: pd.DataFrame, raw: Path) -> str:
         "",
         "## Where the time goes (aead, means in ms)",
         "",
-        "| size | VUs | srv decrypt | srv work | srv encrypt | srv crypto share of handler | client overhead plain | client overhead aead | client enc (Date.now) | client dec (Date.now) | E2E p50 plain | E2E p50 aead |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "| size | VUs | srv decrypt | srv work | srv encrypt | srv crypto share of compute | API CPU-ms/req plain | API CPU-ms/req aead | Δ CPU-ms/req | client overhead plain | client overhead aead | client share of E2E (aead) | client enc (Date.now) | client dec (Date.now) | E2E p50 plain | E2E p50 aead |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     a = cells[cells["mode"] == "aead"].set_index(["size", "vus"])
     for r in cmp.itertuples():
         x = a.loc[(r.size, r.vus)]
         lines.append(
             f"| {r.size} | {r.vus} | {f(x.srv_dec_avg_ms, 4)} | {f(x.srv_work_avg_ms, 4)} | "
-            f"{f(x.srv_enc_avg_ms, 4)} | {f(r.aead_srv_crypto_share_of_app_pct, 1)}% | "
+            f"{f(x.srv_enc_avg_ms, 4)} | {f(r.aead_srv_crypto_share_of_compute_pct, 1)}% | "
+            f"{f(r.plain_api_cpu_ms_per_req, 4)} | {f(r.aead_api_cpu_ms_per_req, 4)} | "
+            f"{f(r.delta_api_cpu_ms_per_req, 4)} | "
             f"{f(r.plain_client_overhead_ms)} | {f(r.aead_client_overhead_ms)} | "
+            f"{f(r.aead_client_share_of_e2e_pct, 1)}% | "
             f"{f(x.client_enc_avg_ms)} | {f(x.client_dec_avg_ms)} | {f(r.plain_e2e_p50_ms)} | {f(r.aead_e2e_p50_ms)} |"
         )
     lines += [

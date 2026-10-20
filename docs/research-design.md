@@ -58,9 +58,10 @@ Let *Δ* denote the difference between the `aead` and `plain` configurations for
 
 1. Run `make test` and confirm functional equivalence: for every fixture payload, the decrypted `aead` response body is byte-identical to the `plain` response body.
 2. Run the smoke test: a short k6 run against both services with a 0% error threshold.
-3. Run the full matrix: 2 modes × 3 sizes × 3 concurrency levels × 5 repetitions = **90 runs**. Each run has a 10 s warm-up, which is discarded, and a 60 s measurement window.
-4. Write raw k6 output (JSON summary plus per-request CSV), resource samples (CSV), and a run manifest (JSON) to `results/raw/<UTC timestamp>/`.
-5. Run the analysis scripts, which read **only** from `results/raw/`.
+3. Run the **pilot** profile (`experiment.toml`: 3 sizes × concurrency {1, 64} × 2 repetitions × 2 modes = 24 runs, 5 s warm-up, 20 s measurement). The pilot confirms the pipeline, estimates variation between repetitions, and checks for client-side bottlenecks. The full matrix runs only after the pilot has been reviewed.
+4. Run the full matrix: 2 modes × 3 sizes × 3 concurrency levels × 5 repetitions = **90 runs**. Each run has a 10 s warm-up, which is discarded, and a 60 s measurement window.
+5. Write raw k6 output (end-of-test summary JSON with exact percentiles, plus logs), resource samples (CSV), and a run manifest (JSON) to `results/raw/<UTC timestamp>/`.
+6. Run the analysis scripts, which read **only** from `results/raw/`.
 
 ## 5. Statistical analysis
 

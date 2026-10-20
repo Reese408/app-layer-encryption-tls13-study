@@ -2,7 +2,7 @@
 
 # Application-Layer Authenticated Encryption over TLS 1.3: A Controlled Performance Study
 
-> **Status: Phase 1 (planning and environment).** No benchmark has been run yet, so this repository contains no measurements. Results will be added only after real execution, together with the raw output behind them.
+> **Status: Phase 2 complete; pilot under review.** The service, encryption layer, tests, and load generator are implemented, and a 24-run pilot has been executed. The full 90-run matrix has **not** been run; it is gated until the pilot is reviewed. Pilot findings are in [reports/pilot.md](reports/pilot.md). They are preliminary (two repetitions per cell, no significance testing).
 
 ## Abstract
 
@@ -56,16 +56,21 @@ The hypotheses, variables, and statistical method are in [docs/research-design.m
 
 ## Quick start
 
-The commands below are the intended interface. They will be implemented and checked in Phase 2. Until then they are not expected to work.
+Prerequisites: Docker Desktop with Compose v2+, [uv](https://docs.astral.sh/uv/), OpenSSL, and Python 3.12. k6 runs in a container, so it does not need to be installed.
 
 ```bash
-make setup        # create the virtualenv, generate the local CA/certs and AEAD keys (gitignored)
-make test         # run unit, functional, and cryptographic correctness tests
-make up           # start both API configurations under Docker Compose
-make smoke        # short k6 run to check both configurations respond equivalently
-make bench        # full benchmark matrix -> results/raw/<timestamp>/
-make analyze      # tables and charts -> results/processed/, reports/figures/
+make setup        # venv, local CA/certs, AEAD keys, payload fixtures (all gitignored), images
+make test         # 53 unit, functional, cryptographic, and TLS 1.3 tests
+make up           # start both API configurations (https://localhost:8443 plain, :8444 aead)
+make validate     # TLS 1.3/1.2 negotiation evidence + resource-sampler validation
+make smoke        # 12 short runs; fails on any error or integrity mismatch
+make pilot        # 24-run pilot -> results/raw/<timestamp>-pilot/
+make analyze      # tables for the latest run -> results/processed/<run>/  (RUN=<dir> to pick one)
+make bench        # full 90-run matrix (about 2 h); run only after pilot review
+make down
 ```
+
+Benchmark parameters live in [`experiment.toml`](experiment.toml), and each run records them in its manifest.
 
 ## Ethics and safety
 
