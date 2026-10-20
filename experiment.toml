@@ -82,7 +82,10 @@ vus = [64]
 # pool is therefore sized to absorb a 100 ms stall: max(64, ceil(rate x 0.1 s)). Idle pool VUs
 # hold no connection; in normal operation about 5 VUs are busy at 7,000 req/s.
 pool = { "1k" = 700, "16k" = 190, "256k" = 64 }
-sample_every = { "1k" = 25, "16k" = 25, "256k" = 3 }
+# K must be coprime with the pool as well as with the 4-item payload pool: arrival-rate VUs are
+# reused in rotation, so K = 25 with a 190-VU pool sampled only one VU in five and biased the
+# sample p50 by 8-11% in 20261020T224521Z-validate-open. 23 is prime and divides no pool size.
+sample_every = { "1k" = 23, "16k" = 23, "256k" = 3 }
 reps = 2
 warmup_s = 5
 duration_s = 15
@@ -96,7 +99,7 @@ sizes = ["1k", "16k", "256k"]
 rates = { "1k" = 7000, "16k" = 1900, "256k" = 140 }
 vus = [64]
 pool = { "1k" = 700, "16k" = 190, "256k" = 64 }   # as validate-open
-sample_every = { "1k" = 25, "16k" = 25, "256k" = 3 }
+sample_every = { "1k" = 23, "16k" = 23, "256k" = 3 }
 reps = 5
 warmup_s = 10
 duration_s = 60

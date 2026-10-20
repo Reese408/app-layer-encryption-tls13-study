@@ -21,6 +21,7 @@ evaluated per run, and the script exits non-zero if any run fails any criterion.
                    open-loop validation and before the third was run; warm-up drops are
                    reported); otherwise over the whole run, including warm-up
                (b) achieved request rate within ±1% of the target
+               (c) every measured iteration sent one request (iterations == requests)
                (informative) schedule lag of sampled iterations, p99 relative to minimum
   client       k6 CPU measured and below the saturation threshold
                (`client_saturation_threshold`); missing k6 CPU samples fail
@@ -134,6 +135,11 @@ def main() -> None:
                 c["sample_p95_err_pct"] = round(e95 * 100, 2)
 
         if r.executor == "constant-arrival-rate":
+            # Every measured iteration must have sent exactly one request (added 2026-10-20,
+            # before the fourth open-loop validation, after iterations without a request were
+            # found in the third).
+            iters = m.get(f"iterations{M}", {}).get("values", {}).get("count", 0)
+            c["r3c_one_request_per_iteration"] = bool(iters == measured)
             # Scenario-split runs: zero drops in the measurement window (warm-up drops are
             # recorded). Earlier single-scenario runs: zero drops over the whole run.
             split = not np.isnan(r.dropped_measure)

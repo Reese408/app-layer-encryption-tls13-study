@@ -26,6 +26,7 @@ import hashlib
 import http.client
 import itertools
 import json
+import math
 import os
 import platform
 import random
@@ -333,6 +334,14 @@ def main() -> None:
         sys.exit(f"profile {args.profile!r} requires --allow-full (owner approval)")
     if prof.get("executor") == "constant-arrival-rate" and set(prof["sizes"]) - set(prof["rates"]):
         sys.exit("open-loop profile needs a rate for every size")
+    # Systematic sampling must not alias with the 4-item payload pool or the VU rotation.
+    every = prof.get("sample_every") or cfg.get("sampling", {}).get("every", {})
+    for run in build_order(cfg, args.profile, prof):
+        k = int(every.get(run["size"], 0))
+        if k and (math.gcd(k, 4) != 1 or math.gcd(k, run["vus"]) != 1):
+            sys.exit(
+                f"sample interval {k} for {run['size']} is not coprime with 4 and {run['vus']}"
+            )
 
     if cfg.get("require_ac_power") and power_source() != "AC Power":
         sys.exit(f"host not on AC power ({power_source() or 'unknown'}); connect power first")

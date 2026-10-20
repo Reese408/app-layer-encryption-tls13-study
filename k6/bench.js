@@ -12,9 +12,13 @@
 //                           Run as two consecutive scenarios (approved 2026-10-20 after the
 //                           open-loop validations dropped iterations at start-up only):
 //                             warmup   ramping-arrival-rate, 0 -> RATE over RAMP_S, then RATE
-//                                      until WARMUP_S; gracefulStop 0 so it never overlaps the
-//                                      next scenario and k6 reuses the same VUs (and their
-//                                      established TLS connections) for measurement
+//                                      until WARMUP_S - 0.5 s; then a 0.5 s gracefulStop in
+//                                      which in-flight iterations finish. It never overlaps
+//                                      the next scenario, so k6 reuses the same VUs (and their
+//                                      established TLS connections) for measurement. An
+//                                      earlier version used gracefulStop 0: a hard-interrupted
+//                                      async (aead) iteration left its VU unusable, and every
+//                                      later iteration on that VU ended without a request.
 //                             measure  constant-arrival-rate at RATE from WARMUP_S for DURATION_S
 //                           k6 tags dropped_iterations with the scenario, so drops in the
 //                           measurement window are counted exactly and separately from warm-up.
@@ -64,6 +68,7 @@ const PATH = '/v1/process';
 const URL = `https://${MODE === 'plain' ? 'api-plain' : 'api-aead'}:8443${PATH}`;
 const WARMUP_MS = WARMUP_S * 1000;
 const RAMP_S = Math.ceil(WARMUP_S / 2); // open loop: rate ramp, then full rate for the rest
+const GRACE_MS = 500; // open loop: warm-up drain before the measurement scenario starts
 
 // Per-VU fixtures (only the representation this mode needs is retained).
 const fixture = JSON.parse(open(`./fixtures/payloads-${SIZE}.json`));
@@ -122,11 +127,11 @@ const scenarios = OPEN
         timeUnit: '1s',
         stages: [
           { target: RATE, duration: `${RAMP_S}s` },
-          { target: RATE, duration: `${WARMUP_S - RAMP_S}s` },
+          { target: RATE, duration: `${(WARMUP_S - RAMP_S) * 1000 - GRACE_MS}ms` },
         ],
         preAllocatedVUs: VUS,
         maxVUs: VUS, // no mid-run VU allocation
-        gracefulStop: '0s',
+        gracefulStop: `${GRACE_MS}ms`,
       },
       measure: {
         executor: 'constant-arrival-rate',
