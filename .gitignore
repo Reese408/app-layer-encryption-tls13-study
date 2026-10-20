@@ -1,0 +1,24 @@
+# Secrets and key material: never commit
+secrets/
+certs/
+*.key
+*.pem
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Regenerable analysis output (raw results ARE committed)
+results/processed/*
+!results/processed/.gitkeep
