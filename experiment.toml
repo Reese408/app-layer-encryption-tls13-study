@@ -118,6 +118,13 @@ warmup_n = 8                                  # one full 8-request order cycle, 
 load_duration_max_ms = 100                    # acceptance: model stayed resident
 determinism_repeats = 5
 
+[profiles.infer-smoke]     # pipeline check of run_infer.py and analysis/h5.py; not H5 data
+executor = "infer"
+lengths = ["short", "long"]
+reps = 1
+measure_n = 8
+gpu_sampling = true
+
 [profiles.infer-pilot]
 executor = "infer"
 lengths = ["short", "long"]
