@@ -161,3 +161,23 @@ def test_h5_expected_order_and_overall():
     assert h5.overall(res) == "inconclusive"
     res.loc[0, "verdict"] = "rejected"
     assert h5.overall(res) == "rejected"
+
+
+def test_envelope_breakdown_shares_and_residual():
+    import envelope_micro as em
+
+    rows = []
+    for proc in range(3):
+        base = {"proc": proc, "size": "1k", "plaintext_bytes": 1024, "envelope_bytes": 1400}
+        for op, ns in {
+            "seal.whole": 10_000, "seal.urandom": 500, "seal.aad": 500, "seal.aesgcm": 3000,
+            "seal.b64": 2000, "seal.json": 2000, "open.whole": 8000, "open.json": 2000,
+            "open.b64": 2000, "open.aesgcm": 2000,
+        }.items():  # fmt: skip
+            for rep in range(5):
+                rows.append({**base, "op": op, "rep": rep, "ns_per_op": ns + proc * 10 * rep})
+    b = em.breakdown(pd.DataFrame(rows)).set_index("op")
+    assert b.loc["seal.aesgcm", "share_median"] == pytest.approx(0.3, abs=0.01)
+    assert b.loc["seal.residual", "share_median"] == pytest.approx(0.2, abs=0.01)
+    assert b.loc["open.residual", "us_median"] == pytest.approx(2.0, abs=0.05)
+    assert (b.n_proc == 3).all()
