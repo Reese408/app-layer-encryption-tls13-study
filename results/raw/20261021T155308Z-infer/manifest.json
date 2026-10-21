@@ -1,0 +1,335 @@
+{
+  "profile": "infer",
+  "started_utc": "2026-10-21T15:53:08.309536+00:00",
+  "git": {
+    "commit": "24bf4fd8d63b97239c727cf1cce64dbe29ae1ed8",
+    "dirty": false
+  },
+  "config": {
+    "seed": 20261020,
+    "cooldown_s": 3,
+    "client_cpu_limit": 8.0,
+    "api_cpu_limit": 2.0,
+    "client_saturation_threshold": 0.85,
+    "require_ac_power": true,
+    "restart_per_run": true,
+    "idle_baseline_s": 2,
+    "sampling": {
+      "every": {
+        "1k": 101,
+        "16k": 25,
+        "256k": 3
+      },
+      "cap": 50000
+    },
+    "inference": {
+      "ollama_host_url": "http://127.0.0.1:11434",
+      "ollama_version": "0.35.0",
+      "model": "qwen3:8b",
+      "model_digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+      "lengths": {
+        "short": 32,
+        "long": 256
+      },
+      "warmup_n": 8,
+      "load_duration_max_ms": 100,
+      "determinism_repeats": 5
+    },
+    "profile": {
+      "gated": true,
+      "executor": "infer",
+      "lengths": [
+        "short",
+        "long"
+      ],
+      "reps": 5,
+      "measure_n": 48,
+      "gpu_sampling": true
+    }
+  },
+  "run_order": [
+    {
+      "seq": 0,
+      "rep": 0,
+      "length": "short",
+      "max_tokens": 32,
+      "first": "plain",
+      "run_id": "000-infer-short-plainfirst-r0"
+    },
+    {
+      "seq": 1,
+      "rep": 0,
+      "length": "long",
+      "max_tokens": 256,
+      "first": "aead",
+      "run_id": "001-infer-long-aeadfirst-r0"
+    },
+    {
+      "seq": 2,
+      "rep": 1,
+      "length": "long",
+      "max_tokens": 256,
+      "first": "plain",
+      "run_id": "002-infer-long-plainfirst-r1"
+    },
+    {
+      "seq": 3,
+      "rep": 1,
+      "length": "short",
+      "max_tokens": 32,
+      "first": "aead",
+      "run_id": "003-infer-short-aeadfirst-r1"
+    },
+    {
+      "seq": 4,
+      "rep": 2,
+      "length": "long",
+      "max_tokens": 256,
+      "first": "aead",
+      "run_id": "004-infer-long-aeadfirst-r2"
+    },
+    {
+      "seq": 5,
+      "rep": 2,
+      "length": "short",
+      "max_tokens": 32,
+      "first": "plain",
+      "run_id": "005-infer-short-plainfirst-r2"
+    },
+    {
+      "seq": 6,
+      "rep": 3,
+      "length": "short",
+      "max_tokens": 32,
+      "first": "aead",
+      "run_id": "006-infer-short-aeadfirst-r3"
+    },
+    {
+      "seq": 7,
+      "rep": 3,
+      "length": "long",
+      "max_tokens": 256,
+      "first": "plain",
+      "run_id": "007-infer-long-plainfirst-r3"
+    },
+    {
+      "seq": 8,
+      "rep": 4,
+      "length": "long",
+      "max_tokens": 256,
+      "first": "aead",
+      "run_id": "008-infer-long-aeadfirst-r4"
+    },
+    {
+      "seq": 9,
+      "rep": 4,
+      "length": "short",
+      "max_tokens": 32,
+      "first": "plain",
+      "run_id": "009-infer-short-plainfirst-r4"
+    }
+  ],
+  "host": {
+    "os": "macOS 26.6",
+    "cpu": "Apple M5 Pro",
+    "ncpu": 18,
+    "mem_bytes": 68719476736,
+    "arch": "arm64",
+    "power": "Now drawing from 'AC Power'"
+  },
+  "docker": {
+    "Client": {
+      "Version": "29.4.0",
+      "ApiVersion": "1.54",
+      "DefaultAPIVersion": "1.54",
+      "GitCommit": "9d7ad9f",
+      "GoVersion": "go1.26.4",
+      "Os": "darwin",
+      "Arch": "arm64",
+      "BuildTime": "Fri Aug  7 04:38:56 2026",
+      "Context": "desktop-linux"
+    },
+    "Server": {
+      "Platform": {
+        "Name": "Docker Desktop 4.93.0 (240920)"
+      },
+      "Version": "29.8.1",
+      "ApiVersion": "1.56",
+      "MinAPIVersion": "1.40",
+      "Os": "linux",
+      "Arch": "arm64",
+      "Components": [
+        {
+          "Name": "Engine",
+          "Version": "29.8.1",
+          "Details": {
+            "ApiVersion": "1.56",
+            "Arch": "arm64",
+            "BuildTime": "Tue Sep 15 16:25:04 2026",
+            "Experimental": "false",
+            "GitCommit": "464cd50",
+            "GoVersion": "go1.26.8",
+            "KernelVersion": "7.0.14-linuxkit",
+            "MinAPIVersion": "1.40",
+            "Module": "github.com/moby/moby/v2",
+            "ModuleVersion": "v2.0.0+unknown",
+            "Os": "linux"
+          }
+        },
+        {
+          "Name": "containerd",
+          "Version": "v2.3.5",
+          "Details": {
+            "GitCommit": "1294c24a7da8e5a793ed378161673abe94118892"
+          }
+        },
+        {
+          "Name": "runc",
+          "Version": "1.5.1",
+          "Details": {
+            "GitCommit": "v1.5.1-0-g8f2685a4"
+          }
+        },
+        {
+          "Name": "docker-init",
+          "Version": "0.19.0",
+          "Details": {
+            "GitCommit": "de40ad0"
+          }
+        }
+      ],
+      "GitCommit": "464cd50",
+      "GoVersion": "go1.26.8",
+      "KernelVersion": "7.0.14-linuxkit",
+      "BuildTime": "2026-09-15T16:25:04.000000000+00:00"
+    }
+  },
+  "docker_vm": {
+    "ncpu": 18,
+    "mem_bytes": 8317267968
+  },
+  "compose": "5.5.1",
+  "k6_version": "k6 v2.3.0 (commit/e088784614, go1.27.1, linux/arm64)",
+  "api_image_id": "sha256:9eec8be174014b7cb69c52423ef71766ec8d81b42a9d1c59fb5241f2486ca583",
+  "api_python_packages": [
+    "annotated-doc==0.0.5",
+    "annotated-types==0.8.0",
+    "anyio==4.15.1",
+    "cffi==2.1.1",
+    "click==8.5.0",
+    "cryptography==50.0.2",
+    "fastapi==0.153.0",
+    "h11==0.16.0",
+    "httptools==0.9.0",
+    "idna==3.20",
+    "opentelemetry-api==1.45.1",
+    "pycparser==3.11",
+    "pydantic==2.14.1",
+    "pydantic_core==2.50.1",
+    "python-dotenv==1.2.4",
+    "PyYAML==6.0.3",
+    "starlette==1.9.0",
+    "typing-inspection==0.4.4",
+    "typing_extensions==4.16.0",
+    "uvicorn==0.54.0",
+    "uvloop==0.23.0",
+    "watchfiles==1.3.0",
+    "websockets==17.3"
+  ],
+  "api_python": "Python 3.12.15 (main, Oct  6 2026, 02:08:11) [GCC 14.2.0]",
+  "compose_sha256": "fea23495fc91b53e128b3a420f619fefd488a968a1275c99b8fc2cfdb73cb062",
+  "fixtures_sha256": {
+    "payloads-16k.json": "b47e94f6381576817a37f4adc73b379c07be1556e1b54f8c4c1b4584ee5f30ff",
+    "payloads-1k.json": "de66c49d9a740e4cbfed3ad3c8c2d500e74f00c58c6caec66e282f295a55da41",
+    "payloads-256k.json": "2daa7c621c0af20668fe87f684fdc59850bb36745ea9f974752081c3fa1e474e"
+  },
+  "aead_kid": "k20261020T153227Z",
+  "inference": {
+    "ollama_state_at_start": {
+      "version": "0.35.0",
+      "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+      "loaded": true,
+      "size": 5919872122,
+      "size_vram": 5919872122,
+      "context_length": 4096,
+      "expires_at": "2319-01-31T09:52:15.593690807-05:00"
+    },
+    "ollama_show": {
+      "thinking": {
+        "values": [
+          false,
+          true
+        ],
+        "default": true
+      },
+      "parameters": "repeat_penalty                 1\nstop                           \"<|im_start|>\"\nstop                           \"<|im_end|>\"\ntemperature                    0.6\ntop_k                          20\ntop_p                          0.95",
+      "template": "\n{{- $lastUserIdx := -1 -}}\n{{- range $idx, $msg := .Messages -}}\n{{- if eq $msg.Role \"user\" }}{{ $lastUserIdx = $idx }}{{ end -}}\n{{- end }}\n{{- if or .System .Tools }}<|im_start|>system\n{{ if .System }}\n{{ .System }}\n{{- end }}\n{{- if .Tools }}\n\n# Tools\n\nYou may call one or more functions to assist with the user query.\n\nYou are provided with function signatures within <tools></tools> XML tags:\n<tools>\n{{- range .Tools }}\n{\"type\": \"function\", \"function\": {{ .Function }}}\n{{- end }}\n</tools>\n\nFor each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:\n<tool_call>\n{\"name\": <function-name>, \"arguments\": <args-json-object>}\n</tool_call>\n{{- end -}}\n<|im_end|>\n{{ end }}\n{{- range $i, $_ := .Messages }}\n{{- $last := eq (len (slice $.Messages $i)) 1 -}}\n{{- if eq .Role \"user\" }}<|im_start|>user\n{{ .Content }}\n{{- if and $.IsThinkSet (eq $i $lastUserIdx) }}\n   {{- if $.Think -}}\n      {{- \" \"}}/think\n   {{- else -}}\n      {{- \" \"}}/no_think\n   {{- end -}}\n{{- end }}<|im_end|>\n{{ else if eq .Role \"assistant\" }}<|im_start|>assistant\n{{ if (and $.IsThinkSet (and .Thinking (or $last (gt $i $lastUserIdx)))) -}}\n<think>{{ .Thinking }}</think>\n{{ end -}}\n{{ if .Content }}{{ .Content }}\n{{- else if .ToolCalls }}<tool_call>\n{{ range .ToolCalls }}{\"name\": \"{{ .Function.Name }}\", \"arguments\": {{ .Function.Arguments }}}\n{{ end }}</tool_call>\n{{- end }}{{ if not $last }}<|im_end|>\n{{ end }}\n{{- else if eq .Role \"tool\" }}<|im_start|>user\n<tool_response>\n{{ .Content }}\n</tool_response><|im_end|>\n{{ end }}\n{{- if and (ne .Role \"assistant\") $last }}<|im_start|>assistant\n{{ if and $.IsThinkSet (not $.Think) -}}\n<think>\n\n</think>\n\n{{ end -}}\n{{ end }}\n{{- end }}",
+      "details": {
+        "parent_model": "",
+        "format": "gguf",
+        "family": "qwen3",
+        "families": [
+          "qwen3"
+        ],
+        "parameter_size": "8.2B",
+        "quantization_level": "Q4_K_M"
+      },
+      "model_info": {
+        "general.architecture": "qwen3",
+        "general.basename": "Qwen3",
+        "general.file_type": 15,
+        "general.license": "apache-2.0",
+        "general.parameter_count": 8190735360,
+        "general.quantization_version": 2,
+        "general.size_label": "8B",
+        "general.type": "model",
+        "qwen3.attention.head_count": 32,
+        "qwen3.attention.head_count_kv": 8,
+        "qwen3.attention.key_length": 128,
+        "qwen3.attention.layer_norm_rms_epsilon": 1e-06,
+        "qwen3.attention.value_length": 128,
+        "qwen3.block_count": 36,
+        "qwen3.context_length": 40960,
+        "qwen3.embedding_length": 4096,
+        "qwen3.feed_forward_length": 12288,
+        "qwen3.rope.freq_base": 1000000,
+        "tokenizer.ggml.add_bos_token": false,
+        "tokenizer.ggml.bos_token_id": 151643,
+        "tokenizer.ggml.eos_token_id": 151645,
+        "tokenizer.ggml.merges": [],
+        "tokenizer.ggml.model": "gpt2",
+        "tokenizer.ggml.padding_token_id": 151643,
+        "tokenizer.ggml.pre": "qwen2",
+        "tokenizer.ggml.token_type": [],
+        "tokenizer.ggml.tokens": []
+      },
+      "capabilities": [
+        "completion",
+        "tools",
+        "thinking"
+      ],
+      "modified_at": "2026-09-26T10:52:25.693282484-04:00"
+    },
+    "options": {
+      "temperature": 0,
+      "seed": 42,
+      "top_k": 20,
+      "top_p": 0.95,
+      "repeat_penalty": 1,
+      "num_ctx": 4096
+    },
+    "request_fields": {
+      "stream": false,
+      "think": false,
+      "keep_alive": -1
+    },
+    "prompts_sha256": "ba38b11dda802b82c2ab1b9cd9afdf2e03243278bb53878e944b5eb0d4a89cfd",
+    "prompt_bytes": [
+      972,
+      1020,
+      994,
+      940
+    ],
+    "ollama_app_version": "0.35.0"
+  }
+}

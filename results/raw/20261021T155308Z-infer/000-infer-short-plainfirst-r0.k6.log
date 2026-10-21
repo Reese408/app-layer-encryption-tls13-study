@@ -1,0 +1,2 @@
+[000-infer-short-plainfirst-r0] plain: n=24 e2e_p50=651.8ms checks=1 | aead: n=24 e2e_p50=639.6ms checks=1
+time="2026-10-21T15:53:14Z" level=info msg="negotiated tls_version=tls1.3 cipher=TLS_AES_256_GCM_SHA384" source=console
