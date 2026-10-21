@@ -1,0 +1,49 @@
+{
+  "profile": "infer-determinism",
+  "started_utc": "2026-10-21T14:50:25.895415+00:00",
+  "git": {
+    "commit": "d70823cb6011a145c270eb043a80eadde19ec9fd",
+    "dirty": false
+  },
+  "inference": {
+    "ollama_host_url": "http://127.0.0.1:11434",
+    "ollama_version": "0.35.0",
+    "model": "qwen3:8b",
+    "model_digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "lengths": {
+      "short": 32,
+      "long": 256
+    },
+    "warmup_n": 8,
+    "load_duration_max_ms": 100,
+    "determinism_repeats": 5,
+    "options": {
+      "temperature": 0,
+      "seed": 42,
+      "top_k": 20,
+      "top_p": 0.95,
+      "repeat_penalty": 1,
+      "num_ctx": 4096
+    },
+    "prompts_sha256": "ba38b11dda802b82c2ab1b9cd9afdf2e03243278bb53878e944b5eb0d4a89cfd"
+  },
+  "ollama_state_at_start": {
+    "version": "0.35.0",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "loaded": true,
+    "size": 5919872122,
+    "size_vram": 5919872122,
+    "context_length": 4096,
+    "expires_at": "2319-01-31T09:37:08.896068807-05:00"
+  },
+  "ollama_state_at_end": {
+    "version": "0.35.0",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "loaded": true,
+    "size": 5919872122,
+    "size_vram": 5919872122,
+    "context_length": 4096,
+    "expires_at": "2319-01-31T09:39:41.727673807-05:00"
+  },
+  "power": "AC Power"
+}
