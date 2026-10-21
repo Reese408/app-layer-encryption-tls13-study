@@ -71,6 +71,9 @@ make stats RUN=results/raw/<dir>       # paired run-level effect sizes, CIs, Hol
 make check-run RUN=results/raw/<dir>   # acceptance criteria (restart isolation, samples, drops)
 make bench        # Experiment A: full 90-run closed-loop matrix; gated (--allow-full)
 make openloop     # Experiment B: 30-run open-loop experiment; gated, analysed separately
+make dashboard RUNS="results/raw/<dir> ..."  # static offline HTML dashboard
+make grafana RUNS="results/raw/<dir> ..."    # Prometheus (backfilled) + Grafana, http://127.0.0.1:3000
+make grafana-down
 make down
 ```
 

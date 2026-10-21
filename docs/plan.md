@@ -58,6 +58,7 @@ Status markers: ☐ not started · ◐ in progress · ☑ done (verified by exec
 | 3.3 | `analysis/aggregate.py` computes p50/p95/p99, throughput, errors, CPU, and memory per cell |
 | 3.4 | `analysis/stats.py`: paired run-level effect sizes, CIs, and Holm correction (implemented and tested in Phase 2; applied to full data in Phase 3) |
 | 3.5 | `analysis/plots.py` draws latency-vs-size, throughput-vs-concurrency, server-timing breakdown, and CPU charts |
+| 3.5b | Post-hoc Prometheus and Grafana dashboards backfilled from recorded results (approved 2026-10-20; never live during a benchmark) |
 | 3.6 | `reports/findings.md` covers environment, exact commands, results tables, figures, limitations, and next steps |
 
 ## Phase 4: Optional local inference

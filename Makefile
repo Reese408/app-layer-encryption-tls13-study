@@ -1,4 +1,4 @@
-.PHONY: setup lint test up down validate smoke pilot validate-pipeline bench openloop analyze stats check-run dashboard
+.PHONY: setup lint test up down validate smoke pilot validate-pipeline bench openloop analyze stats check-run dashboard grafana grafana-down
 
 PY := uv run python
 
@@ -53,3 +53,16 @@ check-run:        ## RUN=results/raw/<dir>: acceptance criteria for the revised 
 
 dashboard:        ## RUNS="results/raw/<dir> ..." -> results/processed/dashboard/index.html
 	$(PY) analysis/dashboard.py $(RUNS)
+
+OBS = docker compose -f observability/compose.yaml
+grafana:          ## RUNS="results/raw/<dir> ..." -> backfilled Prometheus + Grafana on http://127.0.0.1:3000 (never during a benchmark)
+	@if docker ps --format '{{.Names}}' | grep -q '^aead-study-k6-'; then echo "a benchmark is running; refusing to start Grafana"; exit 1; fi
+	$(PY) analysis/export_prometheus.py $(RUNS)
+	$(OBS) down
+	rm -rf results/processed/grafana/tsdb
+	$(OBS) --profile backfill run --rm promtool
+	$(OBS) up -d --wait prometheus grafana
+	@echo "Grafana: http://127.0.0.1:3000  (Prometheus: http://127.0.0.1:9090)"
+
+grafana-down:     ## stop the post-hoc observability stack
+	$(OBS) down

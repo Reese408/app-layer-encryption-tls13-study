@@ -1,0 +1,640 @@
+{
+ "uid": "aead-timeline",
+ "title": "Benchmark session timeline",
+ "tags": [
+  "aead-study"
+ ],
+ "timezone": "utc",
+ "schemaVersion": 39,
+ "editable": true,
+ "refresh": "",
+ "time": {
+  "from": "now-6h",
+  "to": "now"
+ },
+ "panels": [
+  {
+   "id": 1,
+   "type": "text",
+   "title": "",
+   "gridPos": {
+    "x": 0,
+    "y": 0,
+    "w": 24,
+    "h": 3
+   },
+   "options": {
+    "mode": "markdown",
+    "content": "Recorded benchmark sessions, **backfilled** into Prometheus after the runs from `results/raw/` (nothing here was scraped live, so the observability stack could not perturb the measurements). Each run: API containers recreated \u2192 idle baseline \u2192 k6 warm-up \u2192 measurement window. CPU is in cores (API limit 2.0, k6 limit 8.0). Request latency panels show the deterministic **1-in-K sample**, not the full population; exact percentiles are on the *Results* dashboard."
+   }
+  },
+  {
+   "id": 2,
+   "type": "state-timeline",
+   "title": "Run phase (API under test)",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 3,
+    "w": 24,
+    "h": 4
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prom"
+     },
+     "expr": "max by (mode) (bench_run_phase{dataset=~\"$dataset\",mode=~\"$mode\",size=~\"$size\"})",
+     "legendFormat": "{{mode}}",
+     "refId": "A",
+     "range": true,
+     "instant": false,
+     "format": "time_series"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {},
+     "mappings": [
+      {
+       "type": "value",
+       "options": {
+        "0": {
+         "text": "idle / restart",
+         "color": "#5a5a58",
+         "index": 0
+        },
+        "1": {
+         "text": "warm-up",
+         "color": "#c99a2e",
+         "index": 1
+        },
+        "2": {
+         "text": "measurement",
+         "color": "#1baf7a",
+         "index": 2
+        }
+       }
+      }
+     ]
+    },
+    "overrides": []
+   },
+   "options": {
+    "showValue": "never",
+    "mergeValues": true,
+    "alignValue": "left",
+    "rowHeight": 0.8,
+    "legend": {
+     "showLegend": true,
+     "displayMode": "list",
+     "placement": "bottom"
+    }
+   }
+  },
+  {
+   "id": 3,
+   "type": "timeseries",
+   "title": "API container CPU (cores)",
+   "description": "CPU of the API container under test, from consecutive cumulative counters (about 1 s apart).",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 7,
+    "w": 12,
+    "h": 8
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prom"
+     },
+     "expr": "sum by (mode) (bench_container_cpu_cores{role=\"api\",dataset=~\"$dataset\",mode=~\"$mode\",size=~\"$size\"})",
+     "legendFormat": "{{mode}}",
+     "refId": "A",
+     "range": true,
+     "instant": false,
+     "format": "time_series"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 1,
+      "fillOpacity": 0,
+      "showPoints": "never",
+      "spanNulls": false
+     },
+     "unit": "none",
+     "decimals": 2
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "plain"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#3987e5"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "aead"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#d95926"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   }
+  },
+  {
+   "id": 4,
+   "type": "timeseries",
+   "title": "API container working set",
+   "description": "Memory working set (usage \u2212 inactive file) of the API container under test.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 7,
+    "w": 12,
+    "h": 8
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prom"
+     },
+     "expr": "sum by (mode) (bench_container_working_set_bytes{role=\"api\",dataset=~\"$dataset\",mode=~\"$mode\",size=~\"$size\"})",
+     "legendFormat": "{{mode}}",
+     "refId": "A",
+     "range": true,
+     "instant": false,
+     "format": "time_series"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 1,
+      "fillOpacity": 0,
+      "showPoints": "never",
+      "spanNulls": false
+     },
+     "unit": "bytes"
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "plain"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#3987e5"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "aead"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#d95926"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   }
+  },
+  {
+   "id": 5,
+   "type": "timeseries",
+   "title": "k6 load generator CPU (cores; limit 8)",
+   "description": "Client-side CPU. Runs above 85% of the limit (6.8 cores) are excluded as client-bound.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 15,
+    "w": 12,
+    "h": 8
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prom"
+     },
+     "expr": "sum by (mode) (bench_container_cpu_cores{role=\"k6\",dataset=~\"$dataset\",mode=~\"$mode\",size=~\"$size\"})",
+     "legendFormat": "{{mode}}",
+     "refId": "A",
+     "range": true,
+     "instant": false,
+     "format": "time_series"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 1,
+      "fillOpacity": 0,
+      "showPoints": "never",
+      "spanNulls": false,
+      "thresholdsStyle": {
+       "mode": "line"
+      }
+     },
+     "unit": "none",
+     "decimals": 2,
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "transparent",
+        "value": null
+       },
+       {
+        "color": "red",
+        "value": 6.8
+       }
+      ]
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "plain"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#3987e5"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "aead"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#d95926"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   }
+  },
+  {
+   "id": 6,
+   "type": "timeseries",
+   "title": "Sampled request latency per second: p50 (http_req_duration, ms)",
+   "description": "Median of the 1-in-K request sample in each 1 s window. Series = mode \u00d7 size \u00d7 load. Log scale.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 15,
+    "w": 12,
+    "h": 8
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prom"
+     },
+     "expr": "max by (mode, size, load) (bench_sampled_request_ms{component=\"req\",stat=\"p50\",dataset=~\"$dataset\",mode=~\"$mode\",size=~\"$size\"})",
+     "legendFormat": "{{mode}} {{size}} {{load}}",
+     "refId": "A",
+     "range": true,
+     "instant": false,
+     "format": "time_series"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "drawStyle": "points",
+      "lineWidth": 1,
+      "fillOpacity": 0,
+      "showPoints": "never",
+      "spanNulls": false,
+      "pointSize": 3,
+      "scaleDistribution": {
+       "type": "log",
+       "log": 10
+      }
+     },
+     "unit": "ms"
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   }
+  },
+  {
+   "id": 7,
+   "type": "heatmap",
+   "title": "Sampled request latency distribution over time",
+   "description": "Per-second histogram of the 1-in-K request sample (log2 buckets from 0.05 ms), summed over the selected runs. Filter by mode and size above for one configuration.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 23,
+    "w": 24,
+    "h": 9
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prom"
+     },
+     "expr": "sum by (le) (bench_sampled_request_bucket{dataset=~\"$dataset\",mode=~\"$mode\",size=~\"$size\"})",
+     "legendFormat": "{{le}}",
+     "refId": "A",
+     "range": true,
+     "instant": false,
+     "format": "heatmap"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {}
+    },
+    "overrides": []
+   },
+   "options": {
+    "calculate": false,
+    "color": {
+     "mode": "scheme",
+     "scheme": "Oranges",
+     "steps": 64,
+     "exponent": 0.5
+    },
+    "yAxis": {
+     "unit": "ms"
+    },
+    "cellGap": 0,
+    "tooltip": {
+     "mode": "single",
+     "yHistogram": true
+    },
+    "legend": {
+     "show": true
+    },
+    "cellValues": {
+     "unit": "none"
+    }
+   }
+  },
+  {
+   "id": 8,
+   "type": "timeseries",
+   "title": "Sampled server time vs client crypto (ms, sample)",
+   "description": "Per-second medians from the request sample. Server 'app' time (Server-Timing) runs from handler entry to response: it includes reading the request body, which under concurrency includes waiting on the single event loop, plus decrypt + workload + encrypt. Also k6 WebCrypto encrypt/decrypt times (aead only).",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 32,
+    "w": 24,
+    "h": 8
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prom"
+     },
+     "expr": "avg by (mode) (bench_sampled_request_ms{component=\"srv_app\",stat=\"p50\",dataset=~\"$dataset\",mode=~\"$mode\",size=~\"$size\"})",
+     "legendFormat": "server app {{mode}}",
+     "refId": "A",
+     "range": true,
+     "instant": false,
+     "format": "time_series"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prom"
+     },
+     "expr": "avg by (mode) (bench_sampled_request_ms{component=\"client_enc\",stat=\"p50\",dataset=~\"$dataset\",mode=~\"$mode\",size=~\"$size\"})",
+     "legendFormat": "client encrypt {{mode}}",
+     "refId": "B",
+     "range": true,
+     "instant": false,
+     "format": "time_series"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prom"
+     },
+     "expr": "avg by (mode) (bench_sampled_request_ms{component=\"client_dec\",stat=\"p50\",dataset=~\"$dataset\",mode=~\"$mode\",size=~\"$size\"})",
+     "legendFormat": "client decrypt {{mode}}",
+     "refId": "C",
+     "range": true,
+     "instant": false,
+     "format": "time_series"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "drawStyle": "points",
+      "lineWidth": 1,
+      "fillOpacity": 0,
+      "showPoints": "never",
+      "spanNulls": false,
+      "pointSize": 2,
+      "scaleDistribution": {
+       "type": "log",
+       "log": 10
+      }
+     },
+     "unit": "ms"
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   }
+  }
+ ],
+ "templating": {
+  "list": [
+   {
+    "name": "dataset",
+    "label": "dataset",
+    "type": "query",
+    "datasource": {
+     "type": "prometheus",
+     "uid": "prom"
+    },
+    "query": {
+     "query": "label_values(bench_run_phase, dataset)",
+     "refId": "v"
+    },
+    "definition": "label_values(bench_run_phase, dataset)",
+    "multi": false,
+    "includeAll": false,
+    "current": {},
+    "refresh": 1,
+    "sort": 1
+   },
+   {
+    "name": "mode",
+    "label": "mode",
+    "type": "query",
+    "datasource": {
+     "type": "prometheus",
+     "uid": "prom"
+    },
+    "query": {
+     "query": "label_values(bench_run_phase{dataset=~\"$dataset\"}, mode)",
+     "refId": "v"
+    },
+    "definition": "label_values(bench_run_phase{dataset=~\"$dataset\"}, mode)",
+    "multi": true,
+    "includeAll": true,
+    "current": {},
+    "refresh": 1,
+    "sort": 1,
+    "allValue": ".*"
+   },
+   {
+    "name": "size",
+    "label": "size",
+    "type": "query",
+    "datasource": {
+     "type": "prometheus",
+     "uid": "prom"
+    },
+    "query": {
+     "query": "label_values(bench_run_phase{dataset=~\"$dataset\"}, size)",
+     "refId": "v"
+    },
+    "definition": "label_values(bench_run_phase{dataset=~\"$dataset\"}, size)",
+    "multi": true,
+    "includeAll": true,
+    "current": {},
+    "refresh": 1,
+    "sort": 1,
+    "allValue": ".*"
+   }
+  ]
+ },
+ "links": [
+  {
+   "title": "Results",
+   "type": "link",
+   "url": "/d/aead-results"
+  }
+ ]
+}

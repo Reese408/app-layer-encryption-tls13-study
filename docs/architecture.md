@@ -115,3 +115,17 @@ An open-loop run uses two consecutive k6 scenarios that share one pool of pre-al
 | Container resource samples | CSV | `results/raw/<ts>/resources.csv` |
 | Aggregated tables, run-level statistics, pipeline validation | CSV / Markdown / JSON | `results/processed/<ts>/` (`aggregate.py`, `stats.py`, `validate_pipeline.py`) |
 | Figures | PNG + SVG | `reports/figures/` |
+| Static results dashboard | HTML | `results/processed/dashboard/index.html` (`dashboard.py`) |
+| Prometheus backfill and Grafana dashboards | OpenMetrics / TSDB / JSON | `results/processed/grafana/` (`export_prometheus.py`, `observability/`) |
+
+## 8. Post-hoc observability (Prometheus and Grafana)
+
+Approved by the owner on 2026-10-20, after the core dataset's pipeline was validated. The stack is **post hoc**: it never runs during a benchmark, and `make grafana` refuses to start while a k6 container exists.
+
+- **Why it is not live.** Live collection (k6 remote-write, cAdvisor, a Prometheus scrape loop) would add containers and client-side work to the same host and Docker VM during the measured runs. It would also change the conditions under which the pipeline was validated.
+- **Export.** `analysis/export_prometheus.py` converts what is already recorded into OpenMetrics with the original timestamps: resource samples (CPU cores and working set of the API and k6 containers), run phases, exact per-run k6 statistics, the labelled 1-in-*K* request sample, the paired effect sizes from `stats.py`, and the acceptance criteria.
+- **Storage.** `promtool tsdb create-blocks-from openmetrics` writes these into Prometheus TSDB blocks (backfilling).
+- **Dashboards.** Prometheus (`prom/prometheus:v2.53.0`) and Grafana (`grafana/grafana:11.1.0`) are bound to 127.0.0.1. Grafana provisions two dashboards from `observability/dashboards/`:
+  - *Benchmark session timeline*: run phases; API and k6 CPU and memory; sampled latency over time, as points and a heatmap.
+  - *Results*: % change and the paired effect table per metric, median p50/p99, throughput and CPU per request per cell, the acceptance-criteria pass rate, and a per-run table.
+- **Source of truth.** Grafana is a viewer only. Every number in the reports comes from `results/raw/` through the analysis scripts.
