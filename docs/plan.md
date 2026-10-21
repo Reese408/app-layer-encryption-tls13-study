@@ -48,6 +48,13 @@ Status markers: ☐ not started · ◐ in progress · ☑ done (verified by exec
 
 8. **Open-loop run structure** (post-pilot, during validation; approved by the owner). After the first three open-loop validation attempts, the open-loop run was split into a ramped, drained warm-up scenario and a constant-rate measurement scenario. The VU pool was sized to absorb 100 ms stalls (700 / 190 / 64), and the open-loop sample interval was changed to 23 / 23 / 3. See architecture.md §6.2 and reports/pilot.md §10.3.
 
+9. **Phase 4 design** (approved by the owner on 2026-10-21, before any H5 data).
+   - **Response lengths.** Two lengths, 32 and 256 tokens, replace the single 128-token level. The short level is the worst case for H5, and the pair separates fixed cost from per-token cost.
+   - **Concurrency.** The concurrency-4 cell is deferred. GPU queueing and batching would make the work unequal between modes.
+   - **Interleaved runs.** Modes alternate inside each run, unlike Experiments A and B. One shared GPU dominates latency, and the 1% threshold claim needs drift between runs removed.
+   - **Prompt order.** It is counterbalanced, because of Ollama's prompt cache.
+   - Full protocol: research-design.md §7.
+
 ## Phase 3: Evidence
 
 | # | Deliverable |
@@ -65,9 +72,12 @@ Status markers: ☐ not started · ◐ in progress · ☑ done (verified by exec
 
 | # | Deliverable |
 |---|---|
-| 4.1 | `/v1/infer` endpoint calling Ollama `qwen3:8b` with `temperature=0`, `seed=42`, `num_predict=128`, `think=false`, and a fixed prompt set |
-| 4.2 | A reduced matrix (two modes, concurrency 1 and 4, five repetitions), because inference is slow and serializes on the GPU |
+| 4.0 ☑ | Owner approval of the continuation plan (2026-10-21): H5 operational definition, interleaved runs, response lengths 32/256, concurrency 4 deferred, Ollama process and GPU counters recorded, branch `phase-4-inference`. Protocol pre-registered in research-design.md §7 before any H5 data. |
+| 4.1 | `/v1/infer` endpoint calling Ollama `qwen3:8b` with `temperature=0`, `seed=42`, `think=false`, `num_predict` ∈ {32, 256} (deviation 9), and a fixed prompt set |
+| 4.2 | One virtual user, two response lengths, interleaved modes, five blocks (deviation 9). The concurrency-4 cell is deferred. |
 | 4.3 | Separate reporting of inference time (from Ollama's `eval_duration` / `total_duration` and the `infer` server-timing value) and encryption time |
+| 4.4 | Determinism check, then the pilot (`infer-pilot`, 3 blocks), then the owner's gate (G7), then the full run (`infer`, gated) |
+| 4.5 | After H5, if approved (G8): an in-process breakdown of envelope cost (AES-GCM vs Base64 vs JSON), with no change to the API |
 
 ## Decisions for owner review
 

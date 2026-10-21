@@ -16,7 +16,7 @@ Let *Δ* denote the difference between the `aead` and `plain` configurations for
 | H2 | Tail latency (p95, p99) is the same. | `aead` has higher tail latency. |
 | H3 | Sustained throughput (requests per second at fixed concurrency) is the same. | `aead` has lower throughput. |
 | H4 | Δlatency does not depend on payload size. | Δlatency grows with payload size. |
-| H5 | Under LLM inference, Δlatency as a share of total latency is not below 1%. | It is below 1%, so encryption is negligible next to inference. |
+| H5 | Under LLM inference, Δlatency as a share of total latency is not below 1%. | It is below 1%, so encryption is negligible next to inference. Operational definition and decision rule: §7.5. |
 
 **Expected outcome, stated beforehand:** AES-GCM uses hardware acceleration on the test CPU (ARMv8 Cryptography Extensions), so the AEAD operation itself is expected to be cheap. Any overhead that can be measured is expected to come mostly from Python-level envelope handling (JSON and Base64) rather than from the cipher. This expectation is recorded *before* any data is collected and does not affect the analysis.
 
@@ -115,3 +115,80 @@ Implementation: `analysis/stats.py` (tested in `tests/test_analysis.py`).
 - **External:** one host (Apple Silicon, macOS, Docker Desktop VM). Results may differ on x86 or bare-metal Linux. The study has no real TLS-terminating intermediary, so it measures the cost of the layer, not its benefit in deployment.
 - **Client-side cryptography:** in `aead` mode, k6 encrypts and decrypts with WebCrypto. That client cost is part of the end-to-end figure, and server-side timing is reported separately so it can be isolated.
 - **Statistical power:** five pairs per cell detect large, consistent effects (the pilot showed 5–48% median-latency differences with low variation between repetitions), but have little power for small effects or for p99 at 1 VU, which varied by up to 55% between pilot repetitions. A non-significant result is not evidence of no effect; the confidence intervals bound the plausible effect.
+
+## 7. Experiment C: LLM inference (H5), pre-registered protocol
+
+This section was approved by the repository owner on 2026-10-21 and committed **before any H5 measurement was collected**. Two exploratory requests were sent to Ollama before this commit, to confirm that the containers can reach the host and to estimate runtime: about 52 generated tokens/s, roughly 0.7 s for a 32-token response and 5.1 s for a 256-token response. They are feasibility checks only and are not H5 data.
+
+### 7.1 Model and inference controls
+
+| Control | Value |
+|---|---|
+| Runtime | Ollama 0.35.0, running natively on the macOS host (Metal GPU). The version is checked before every run, and the run is aborted if it has changed, which guards against auto-update during the study. |
+| Model | `qwen3:8b`, digest `sha256:500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41`, GGUF Q4_K_M, 8.2B parameters. The digest is checked before every run. |
+| Generation options (every request, including warm-up) | `think=false`, `stream=false`, `temperature=0`, `seed=42`, `top_k=20`, `top_p=0.95`, `repeat_penalty=1`, `num_ctx=4096`, `keep_alive=-1`; `num_predict` set by the response-length level |
+| Residency | Before and after every run, `/api/ps` must show the pinned model loaded and fully in GPU memory (`size_vram == size`). A changed `num_ctx` would force a reload, so it is never varied. |
+| Prompts | Four fixed prompts of about 1 KiB each (`scripts/gen_prompts.py`), written so that generation runs to the token limit (`done_reason=length`) |
+
+### 7.2 Factors and design
+
+- **Encryption mode:** `plain`, `aead` (unchanged).
+- **Response length:** `num_predict` = 32 (*short*) and 256 (*long*). This replaces the single 128-token level of `plan.md` 4.1 (owner-approved deviation). The short level is the least favourable case for H5, because fixed per-request costs are the largest share there. With two levels, the fixed and per-token components of latency can be separated.
+- **Concurrency:** one virtual user. The concurrency-4 cell of `plan.md` 4.2 is deferred (owner-approved). Ollama serves one model on one GPU. With concurrent requests it queues or batches them, and batching changes the numerics, so the work in each mode would no longer be equivalent.
+- **Interleaved runs (owner-approved deviation from Experiments A and B).** One k6 process sends requests alternately to `api-plain` and `api-aead`, one at a time. Experiments A and B were CPU-bound, and run-level pairing controlled drift adequately there. Here one shared GPU dominates latency, and H5 is a threshold claim at 1%, so drift between runs would otherwise set the confidence bound. Each run is still the unit of analysis.
+- **Request order inside a run.** The 8-request cycle (p1,A) (p2,B) (p3,A) (p4,B) (p1,B) (p2,A) (p3,B) (p4,A) is repeated, where A is the run's first mode. Each mode receives each prompt equally often, and no request follows a request with the same prompt. Ollama reuses its prompt cache when consecutive requests share a prefix, so a repeated prompt would skip prompt processing and bias the comparison. Only the common chat-template prefix can be reused, and it is reused equally in both modes. The first mode alternates between blocks, with a seeded starting point per length.
+- **Per run:** one 8-request cycle of warm-up (discarded), then 48 measured requests, which is 24 per mode. Both API containers are recreated before every run (R1).
+- **Blocks:** each repetition is a block that contains the short run and the long run in a seeded random order. The full experiment has 5 blocks, which makes 10 runs and 480 measured requests. The pilot has 3 blocks with 32 measured requests per run.
+
+### 7.3 Determinism check (before the pilot)
+
+Each prompt × length combination is generated 5 times directly against Ollama, cycling through the prompts so that no prompt repeats back to back. **Required:** every generation has `eval_count == num_predict` and `done_reason=length`, which shows equal generation work. **Reported:** whether the SHA-256 of the generated text is identical across repeats. The text itself is not stored. A fixed seed does not guarantee byte-identical output, and identical hashes are not required for validity.
+
+### 7.4 Measures
+
+| Measure | Definition |
+|---|---|
+| **E2E** (primary) | k6 `iteration_duration` of one request: client encryption (aead), HTTP request, client decryption (aead), and response checking |
+| HTTP (secondary) | k6 `http_req_duration` |
+| Client crypto | k6 encrypt and decrypt timers |
+| Server crypto | `Server-Timing` `dec` and `enc` |
+| Model wait | `Server-Timing` `infer`: the wall time of the API's call to Ollama |
+| Model internals | Ollama's `load_duration`, `prompt_eval_count`/`_duration`, `eval_count`/`_duration`, `total_duration` (returned inside the response body, so they are encrypted in aead mode) |
+| Network hop to the model | `infer` − `total_duration` |
+| Tokens/s | `eval_count` / `eval_duration` |
+| Resources | API and k6 containers (Docker stats, ~1 Hz); the Ollama host processes' RSS and cumulative CPU time (`ps`, 1 Hz); GPU "Device Utilization %" and in-use memory from `ioreg` (IOAccelerator, 1 Hz, unprivileged, driver-reported, semantics not publicly documented) |
+
+**Time to first token is not measured.** Responses are non-streaming, so the client receives the whole response at once. Ollama's `prompt_eval_duration` is reported as server-side prompt processing only and is not presented as time to first token.
+
+Every measured request is recorded, so run-level medians are computed from the complete request log and not from a sample. Per-mode medians from the k6 summary are a cross-check.
+
+### 7.5 Statistical procedure for H5
+
+For run *b* (block) at length *L*, let *r_b* = median E2E(aead) / median E2E(plain), each median taken over that run's 24 measured requests per mode.
+
+- **Overhead share:** *s* = Δ / T_aead = 1 − 1/*r*. The threshold *s* < 1% is equivalent to *r* < 1/0.99 = 1.010101.
+- **Hypotheses, per length level:** H₀: *s* ≥ 1%; H₁: *s* < 1%.
+- **Decision:** compute the one-sided 95% upper confidence bound (UCB) on the geometric-mean ratio, exp(mean(log *r_b*) + *t*₀.₉₅,₄ · sd(log *r_b*) / √5).
+  - **Supported** at length *L* if UCB < 1.010101.
+  - **Rejected** if the one-sided 95% lower bound is ≥ 1.010101.
+  - **Inconclusive** otherwise.
+- **H5 overall** is supported only if it is supported at **both** lengths (an intersection–union test, so no multiplicity correction is needed), rejected if it is rejected at either length, and inconclusive otherwise. A non-significant difference test is never taken as support.
+- **Also reported:**
+  - the absolute difference (ms) and the relative difference, with two-sided 95% CIs;
+  - the per-run log ratios and their SD;
+  - the same procedure applied to HTTP latency (secondary);
+  - an **instrumented share**: (client enc + client dec + server dec + server enc) / E2E(aead), per request, median per run. This is a mechanistic estimate, not the test;
+  - an OLS model E2E = *a* + *b*·tokens per mode, separating fixed from per-token cost;
+  - practical significance in milliseconds.
+- **Pilot rule (fixed now):** if the pilot's pooled SD of log *r_b* exceeds 0.007 (UCB margin under ~0.3% at *n* = 5), the owner is asked whether to raise the number of blocks, with a precision calculation. The test itself is not changed.
+
+### 7.6 Run acceptance criteria
+
+A run is valid only if all of the following hold. Invalid runs are kept, reported, and never repaired.
+
+1. Zero HTTP errors, all checks passed, and every aead response authenticated and decrypted.
+2. Every measured request has `eval_count == num_predict` and `done_reason=length`.
+3. Every measured request has `load_duration` < 100 ms, and the model is resident on the GPU before and after the run.
+4. The Ollama version and model digest are unchanged from the session start.
+5. Each mode received 24 measured requests (6 per prompt), in the pre-specified order.
+6. k6 CPU stayed below 85% of its limit.

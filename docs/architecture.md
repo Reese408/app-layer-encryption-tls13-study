@@ -37,7 +37,7 @@ The workload step is the **same function, called with the same plaintext bytes**
 |---|---|---|
 | GET | `/healthz` | Liveness check. Returns mode and key ID only, never key material. |
 | POST | `/v1/process` | Deterministic workload: canonicalize the JSON payload, compute a fixed number of SHA-256 rounds over it, and return the digest along with an echo of the payload. The cost scales with payload size and is identical in both modes. |
-| POST | `/v1/infer` | Phase 4. Forwards a fixed prompt template plus the payload's `prompt` field to Ollama with fixed generation options. |
+| POST | `/v1/infer` | Phase 4. The plaintext body is `{"id", "prompt", "max_tokens"}`. The route forwards the prompt to Ollama with fixed generation options (research-design.md §7.1) and returns `{"id", "response", "meta"}`, where `meta` holds Ollama's token counts and durations. In aead mode both bodies are sealed exactly as on `/v1/process`. `Server-Timing` reports `dec`, `infer` (the wall time of the Ollama call), `enc` and `app`. |
 
 ## 4. Encryption envelope (aead mode)
 
@@ -100,6 +100,20 @@ An open-loop run uses two consecutive k6 scenarios that share one pool of pre-al
 - **Dropped iterations.** k6 tags `dropped_iterations` with the scenario, so measurement-window drops are counted exactly. They must be zero. Warm-up drops are recorded and reported.
 - **VU pool.** The pool is max(64, ⌈rate × 0.1 s⌉), which absorbs a 100 ms stall. An idle VU holds no connection.
 - **Draining the warm-up.** The warm-up must not hard-stop in-flight iterations. With `gracefulStop: 0`, an interrupted asynchronous (aead) iteration left its VU in a state in which every later iteration on it finished without sending a request. The validation criterion r3c (iterations = requests in the measurement window) detects this.
+
+### 6.3 Inference run structure (Experiment C, H5)
+
+```
+k6 (1 VU) ──TLS 1.3──▶ api-plain ──HTTP──▶ host.docker.internal:11434 ─▶ Ollama (Metal GPU)
+          ──TLS 1.3──▶ api-aead  ──HTTP──▶            (same)           ─▶ qwen3:8b
+request i: prompt p(i mod 4), mode from the 8-request cycle A B A B B A B A
+```
+
+- **Interleaving.** A single k6 VU alternates between the two API services, so both modes share the same moment of GPU and thermal state. One 8-request cycle of warm-up is followed by 48 measured requests.
+- **Sampling.** Every measured request is written to the per-request log (`<run>.samples.csv`), so this experiment uses no sampling.
+- **Checks around each run.** Before and after every run, the orchestrator reads Ollama's `/api/version`, `/api/tags` (digest) and `/api/ps` (residency, GPU share). It records these in `runs.csv` and aborts on a version or digest change.
+- **Host sampling.** A host-side sampler records, at about 1 Hz, the Ollama processes' RSS and cumulative CPU time (`ps`), together with the GPU utilization and in-use memory counters that `ioreg` reports. Output goes to `host_resources.csv`.
+- **The hop to Ollama** is plain HTTP inside the host and carries the prompt in plaintext in both modes. The model must see plaintext, so the application-layer envelope necessarily ends at the API (threat-model.md §2).
 
 ## 7. Data artifacts
 
