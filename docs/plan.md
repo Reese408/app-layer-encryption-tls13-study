@@ -53,13 +53,13 @@ Status markers: ☐ not started · ◐ in progress · ☑ done (verified by exec
 | # | Deliverable |
 |---|---|
 | 3.1 | Run `make test` and `make smoke`, and record the output |
-| 3.2 | Experiment A, the full closed-loop matrix: 2 modes × 3 sizes × 3 concurrency levels × 5 repetitions = 90 runs (`make bench`) |
-| 3.2b | Experiment B, open loop: 2 modes × 3 sizes × 5 repetitions = 30 runs (`make openloop`), analysed separately |
-| 3.3 | `analysis/aggregate.py` computes p50/p95/p99, throughput, errors, CPU, and memory per cell |
-| 3.4 | `analysis/stats.py`: paired run-level effect sizes, CIs, and Holm correction (implemented and tested in Phase 2; applied to full data in Phase 3) |
-| 3.5 | `analysis/plots.py` draws latency-vs-size, throughput-vs-concurrency, server-timing breakdown, and CPU charts |
-| 3.5b | Post-hoc Prometheus and Grafana dashboards backfilled from recorded results (approved 2026-10-20; never live during a benchmark) |
-| 3.6 | `reports/findings.md` covers environment, exact commands, results tables, figures, limitations, and next steps |
+| 3.2 ☑ | Experiment A, the full closed-loop matrix: 2 modes × 3 sizes × 3 concurrency levels × 5 repetitions = 90 runs (`make bench`); `results/raw/20261020T233709Z-full`, 90/90 valid |
+| 3.2b ☑ | Experiment B, open loop: 2 modes × 3 sizes × 5 repetitions = 30 runs (`make openloop`), analysed separately; `results/raw/20261021T013349Z-openloop`, 30/30 valid |
+| 3.3 ☑ | `analysis/aggregate.py` computes p50/p95/p99, throughput, errors, CPU, and memory per cell |
+| 3.4 ☑ | `analysis/stats.py`: paired run-level effect sizes, CIs, and Holm correction (implemented and tested in Phase 2; applied to full data in Phase 3) |
+| 3.5 ☑ | Figures: implemented as the static dashboard `analysis/dashboard.py` (forest plots, per-run dot plots, server breakdown, sample ECDFs) in place of `analysis/plots.py` |
+| 3.5b ☑ | Post-hoc Prometheus and Grafana dashboards backfilled from recorded results (approved 2026-10-20; never live during a benchmark) |
+| 3.6 ◐ | `reports/results.md` covers environment, exact commands, results tables, dashboards, limitations, and next steps (draft; awaiting owner review) |
 
 ## Phase 4: Optional local inference
 
