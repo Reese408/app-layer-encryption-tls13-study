@@ -3,24 +3,27 @@
 | Item | Value |
 |---|---|
 | Experiment A (closed loop, primary) | `results/raw/20261020T233709Z-full/`: 90 runs, 2026-10-20 23:37 – 2026-10-21 01:33 UTC, commit `49c57b7` |
-| Experiment B (open loop, secondary) | `results/raw/20261021T013349Z-openloop/`: 30 runs, 2026-10-21 01:33 – 02:12 UTC, commit `49c57b7` (see §2.3) |
+| Experiment B (open loop, secondary) | `results/raw/20261021T013349Z-openloop/`: 30 runs, 2026-10-21 01:33 – 02:12 UTC, commit `49c57b7` (see §2.4) |
 | Analysis | `analysis/aggregate.py`, `analysis/stats.py`, `analysis/validate_pipeline.py`, `analysis/diagnostics.py` |
 | Pre-registration | [docs/research-design.md](../docs/research-design.md) §2 (hypotheses) and §5 (statistics), fixed before Experiment A was run; acceptance criteria from [pilot.md §10.3](pilot.md#103-validation-of-the-revised-pipeline) |
 | Exclusions | none: 120 of 120 runs pass every acceptance criterion |
 
-Every number in this report is produced by the analysis scripts from `results/raw/`. The commands are listed in §9.
+Every number in this report is produced by the analysis scripts from `results/raw/`. The commands are listed in §10.
 
 ## 1. Summary
 
 Both experiments compare two configurations of one FastAPI service under TLS 1.3 (TLS_AES_256_GCM_SHA384): `plain`, with TLS only, and `aead`, with TLS plus an AES-256-GCM envelope over the request and response bodies. The two run the same image, code path, and deterministic workload.
 
-- **Median latency (H1).** The envelope raised median request latency in all nine closed-loop cells. All nine are significant after Holm correction. The increase was **+13% to +52%**, which is **+0.015 ms** for 1 KiB at concurrency 1 and **+65 ms** for 256 KiB at concurrency 64.
+- **Median latency (H1).** The envelope raised median request latency (`http_req_duration`) in all nine closed-loop cells. All nine are significant after Holm correction.
+  - The relative increase was **+13% to +52%**. These percentages are paired geometric-mean ratios over the five blocks.
+  - The absolute increase (the mean paired difference) was **+0.015 ms** for 1 KiB at concurrency 1 and **+65 ms** for 256 KiB at concurrency 64.
+  - The tables also list each configuration's median of the per-run p50 values. That summary is related to the ratio but different, so the two do not have to agree exactly.
 - **Throughput (H3).** Throughput fell in all nine cells (**−16% to −61%**, all significant). The largest relative losses are at concurrency 1, where one k6 virtual user also performs the client-side encryption and decryption.
 - **Tail latency (H2).** p99 latency was higher in all 45 block pairs, but only five of the nine cells are significant after Holm correction: both higher-concurrency 16 KiB cells and all three 256 KiB cells. The 1 KiB cells and 16 KiB at concurrency 1 have wide intervals.
-- **Payload size (H4).** The absolute latency cost grows with payload size at every concurrency level: 0.16, 1.99, and 8.05 ms per doubling of the payload at 1, 16, and 64 VUs. All three are significant.
-- **Server CPU and memory.** The server spends **18–53% more CPU per request** in `aead` mode. Envelope decryption and encryption account for 34–43% of the server's compute time per request. Peak memory did not differ significantly in any closed-loop cell.
+- **Payload size (H4).** Across the tested range (three sizes from 1 to 256 KiB), the absolute latency cost grows with payload size at every concurrency level. The estimated slopes are 0.16, 1.99, and 8.05 ms per doubling at 1, 16, and 64 VUs, and all three are significant. They summarize the tested range and are not a general scaling law (§3.4).
+- **Server CPU and memory.** The server spends **18–53% more CPU per request** in `aead` mode. Envelope decryption and encryption account for 34–43% of the server's compute time per request. Peak memory did not differ significantly in any closed-loop cell. That is not evidence of equal memory use (§3.5).
 - **End-to-end cost.** Including the client's own cryptography, the median end-to-end time grew by **+19% to +160%**. In `aead` mode at concurrency 1, client-side overhead is 42–45% of the end-to-end time.
-- **Open loop.** At fixed sub-capacity arrival rates (Experiment B), p99 latency rose in all three sizes (+20% to +49%) and median latency rose at 1 KiB and 256 KiB (+14% and +13%). At 16 KiB, the `plain` configuration had the *higher* median latency, a reproducible effect attributed to processing outside the request handler (§5.3). Its cause has not been established.
+- **Open loop.** At fixed sub-capacity arrival rates (Experiment B), p99 latency rose in all three sizes (+20% to +49%) and median latency rose at 1 KiB and 256 KiB (+14% and +13%). At 16 KiB, the `plain` configuration had the *higher* median latency. The effect is reproducible and was located outside the request handler (§5.3). **Its cause is unresolved**, and it is kept separate from the conclusions above.
 
 ## 2. Procedure and data quality
 
@@ -41,7 +44,19 @@ Both experiments compare two configurations of one FastAPI service under TLS 1.3
 - **Per-run protocol.** Before every run, both API containers were recreated. The runner waited for the health check and a TLS 1.3 readiness probe, then recorded a 2 s idle baseline.
 - **Unit of analysis.** The unit is one run. `aead` and `plain` are paired within each block (*n* = 5 pairs per cell). The effect size is the geometric-mean ratio aead/plain with a paired-*t* 95% CI, together with the mean absolute difference and its CI. The test is a two-sided paired *t*-test on log ratios, with Holm correction within each metric family. The sign-flip and Mann–Whitney tests and Cliff's δ are reported in `stats.md` as robustness checks. With 5 pairs, the exact sign-flip test cannot go below p = 0.0625, so it cannot reach significance on its own (research-design §5).
 
-### 2.3 Acceptance criteria and incidents
+### 2.3 What each measure includes
+
+| Measure | k6 metric | Includes | Excludes |
+|---|---|---|---|
+| Request latency (H1, H2) | `http_req_duration` | Sending the request, the server's TLS decryption, the HTTP server, the application (in `aead`, envelope decryption and encryption), and receiving the response up to its last byte | The client's own WebCrypto encryption and decryption, and the integrity check |
+| End-to-end latency (secondary) | `iteration_duration` | Everything above, plus the client's encryption, decryption, and byte-exact integrity check | Nothing on the request path |
+| Throughput (H3) | completed iterations per second | One completed iteration per request, so client-side work is included | |
+| Server CPU per request | cgroup CPU of the API container ÷ requests | Server work only | Client work |
+
+- **Throughput at 1 VU.** In the closed loop each VU runs one iteration at a time, so throughput at concurrency 1 is bounded by the *end-to-end* time. In `aead` mode that includes client-side cryptography. The 1-VU throughput losses (§3.3) therefore combine client and server cost and should not be read as server capacity.
+- **Server-only cost.** Server-side cost alone is best read from server CPU per request (§3.5) and the server stage timings (§4.1).
+
+### 2.4 Acceptance criteria and incidents
 
 | Criterion | Experiment A | Experiment B |
 |---|---|---|
@@ -141,7 +156,14 @@ H₀ is rejected in all nine cells. The relative loss is greatest at concurrency
 | c16 | 5 | 1.990 | [1.830, 2.150] | 0.000004 | 0.00001 |
 | c64 | 5 | 8.048 | [7.114, 8.982] | 0.00002 | 0.00004 |
 
-H₀ is rejected at every concurrency level: the absolute median-latency cost grows with payload size. The model is linear in log₂(size) over only three sizes (1, 16, and 256 KiB), so the slope summarizes the trend and is not a validated functional form.
+**Method.** Within each block, Δp50 (aead − plain) is regressed on log₂(payload bytes) across the three sizes. The five block slopes are then treated as independent observations, giving a t-based 95% CI and a one-sample t-test. Holm correction is applied across the three load levels.
+
+**Result.** H₀ is rejected at every concurrency level. Within the tested range, the absolute median-latency cost grows with payload size.
+
+**Caveats.**
+- The slope comes from only three sizes (1, 16, and 256 KiB). It is an estimated scaling effect *across this range*, not a validated functional form, and it should not be extrapolated beyond 256 KiB or interpolated with confidence.
+- The growth is visibly not linear in log₂(size). At 1 VU the mean differences are +0.015, +0.092, and +1.288 ms (§3.1), so most of the slope comes from the step from 16 to 256 KiB.
+- The relative cost also rises with size, from about 13–19% at 1 KiB to about 43–52% at 256 KiB (§3.1), but H4 was specified on the absolute difference.
 
 ### 3.5 Secondary metrics
 
@@ -188,7 +210,8 @@ API peak working set:
 | 256k | c64 | 143.6 | 147.9 | 1.038 [1.013, 1.063] | +3.8% | +5.5 [+1.9, +9.0] | 5/5 | 0.1126 |
 
 - **CPU.** CPU per request rose significantly in every cell, from +0.011 to +1.33 CPU-ms.
-- **Memory.** Peak working set showed no significant difference in any cell. The ratios lie between 0.98 and 1.06, and every CI includes 1 except at 256 KiB / 64 VUs. There the CI is [1.013, 1.063], and the effect is not significant after Holm correction (p = 0.11).
+- **Memory: no significant difference.** Peak working set showed no significant difference in any cell. The ratios lie between 0.98 and 1.06, and every CI includes 1 except at 256 KiB / 64 VUs. There the CI is [1.013, 1.063], and the effect is not significant after Holm correction (p = 0.11).
+- **Memory: not shown to be equal.** Absence of a significant difference does **not** show that memory use is the same. No equivalence test (for example TOST with a pre-set margin) was pre-specified. The per-cell 95% CIs span ratios from 0.938 to 1.189, so with *n* = 5, memory differences of up to about +19% (1 KiB, 64 VUs) cannot be ruled out. The supported conclusion is narrower: no memory increase was detected, and the data are compatible with differences of a few percent up to that bound.
 
 ## 4. Where the cost comes from
 
@@ -308,14 +331,28 @@ API peak working set:
 - **Client-bound cells at concurrency 1.** At 1 VU, a single VU also does the client crypto, so throughput at c1 reflects both client and server cost. The client never exceeded 32% of its CPU limit, but at c1 one VU is serial by construction.
 - **Not measured.** Cold processes and long-lived processes are not measured, because the containers are recreated per run (R1). Key management, rotation, and multi-tenant key lookup are outside scope.
 - **Unexplained anomaly.** The 16 KiB open-loop anomaly (§5.3) is reported but not explained.
-- **Concurrent documentation work.** Small amounts of documentation and code editing took place on the host during Experiment A (§2.3). Randomized, interleaved block ordering spreads any such disturbance across both modes.
+- **Concurrent documentation work.** Small amounts of documentation and code editing took place on the host during Experiment A (§2.4). Randomized, interleaved block ordering spreads any such disturbance across both modes.
 
-## 8. Dashboards
+## 8. Review log
+
+**External review, 2026-10-21.** The owner's review of the Grafana *Results* dashboard raised the following points. The responses below were made before the owner's final sign-off.
+
+| Point raised | Verification | Change |
+|---|---|---|
+| H1: all nine configurations positive and Holm-significant; absolute and relative effects should both be prominent | Confirmed. H1 was recomputed independently from the raw k6 summaries, without the pipeline code. All nine ratios and Holm-adjusted p-values match `stats.csv` exactly. | §1 now gives the ratio-based percentages and the absolute differences separately, and explains how the medians of per-run p50 relate to the ratios. |
+| H2: only 5 of 9 significant; avoid claiming confirmation everywhere | Confirmed. | The wording was already qualified (§1, §3.2, §6). No change. |
+| H4: verify how the slopes were estimated; describe them as covering the tested range | Confirmed. The method is a per-block OLS on log₂ bytes followed by a t-interval over the 5 block slopes (`stats.size_trend`). The growth is non-linear within the range. | §1 and §3.4 now state the method and the range limitation, with a warning against extrapolation. |
+| Memory: non-significance does not prove equivalence | Confirmed. No equivalence test was pre-specified. | §1 and §3.5 now state this, along with the effect sizes the CIs cannot exclude. |
+| Distinguish server latency from end-to-end latency, especially for 1-VU throughput | Confirmed. Both measures were reported, but the distinction was not explained. | New §2.3 defines what each measure includes and how 1-VU throughput should be read. |
+| 16 KiB anomaly: frame it as unresolved | Already framed this way. | §1 now says explicitly that it is unresolved and kept separate from the conclusions. |
+| Reproducibility: scripts, code revision, and raw-data provenance | Commits are recorded in the header and §2.4. The raw data, scripts, and manifests are in the repository, and the commands are in §10. | No change. |
+
+## 9. Dashboards
 
 - **Static dashboard.** `make dashboard RUNS="results/raw/20261020T233709Z-full results/raw/20261021T013349Z-openloop"` writes `results/processed/dashboard/index.html`, an offline page with forest plots, per-run dot plots, the server breakdown, and sample ECDFs.
 - **Grafana.** `make grafana RUNS="…"` backfills Prometheus from the same files and serves Grafana at http://127.0.0.1:3000. It has two dashboards: *Results*, showing effect sizes, CIs, Holm p-values, per-cell medians, acceptance criteria, and per-run values, and *Benchmark session timeline*, showing run phases, CPU and memory of the API and k6, and sampled latency over time. It is post hoc and was never running during a measurement ([architecture.md §8](../docs/architecture.md#8-post-hoc-observability-prometheus-and-grafana)).
 
-## 9. Reproduction
+## 10. Reproduction
 
 ```sh
 make check-run RUN=results/raw/20261020T233709Z-full      # acceptance criteria
