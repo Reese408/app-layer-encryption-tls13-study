@@ -141,6 +141,7 @@ def per_run(raw: Path, valid: set[str]) -> pd.DataFrame:
             s[["client_enc_ms", "client_dec_ms", "srv_dec_ms", "srv_enc_ms"]].fillna(0).sum(axis=1)
         )
         s["hop_ms"] = s.srv_infer_ms - s.ollama_total_ms
+        s["nonmodel_ms"] = s.iter_ms - s.ollama_total_ms  # E2E outside Ollama's own time
         s["srv_other_ms"] = s.srv_app_ms - s.srv_infer_ms - s.srv_dec_ms - s.srv_enc_ms
         s["tok_s"] = s.eval_count / (s.eval_ms / 1e3)
         row = {
@@ -164,6 +165,7 @@ def per_run(raw: Path, valid: set[str]) -> pd.DataFrame:
                 f"{m}_prompt_eval_p50": g.prompt_eval_ms.median(),
                 f"{m}_eval_p50": g.eval_ms.median(),
                 f"{m}_hop_p50": g.hop_ms.median(),
+                f"{m}_nonmodel_p50": g.nonmodel_ms.median(),
                 f"{m}_srv_other_p50": g.srv_other_ms.median(),
                 f"{m}_tok_s_p50": g.tok_s.median(),
                 f"{m}_prompt_eval_count_p50": g.prompt_eval_count.median(),
@@ -198,6 +200,11 @@ def per_run(raw: Path, valid: set[str]) -> pd.DataFrame:
         df[f"r_{k}"] = df[f"aead_{k}_p50"] / df[f"plain_{k}_p50"]
         df[f"d_{k}_ms"] = df[f"aead_{k}_p50"] - df[f"plain_{k}_p50"]
     df["share_e2e"] = 1 - 1 / df.r_e2e
+    # Exploratory (not pre-registered): split each run's E2E difference into the part inside
+    # Ollama's reported total_duration and the part outside it (client, TLS, API, envelope,
+    # hop). The model cannot see the mode, so the inside part is attributable to model noise.
+    df["d_model_ms"] = df.aead_ollama_total_p50 - df.plain_ollama_total_p50
+    df["d_nonmodel_ms"] = df.aead_nonmodel_p50 - df.plain_nonmodel_p50
     return df
 
 
@@ -349,6 +356,35 @@ def to_markdown(
         lines.append(
             "| " + " | ".join(f(x, 4) if isinstance(x, float) else str(x) for x in r) + " |"
         )
+    v = df[df.valid]
+    if len(v) > 2:
+        lines += [
+            "",
+            "## Exploratory: where the run-level differences are (not pre-registered)",
+            "",
+            f"corr(Δ E2E, Δ Ollama total_duration) over runs = "
+            f"{np.corrcoef(v.d_e2e_ms, v.d_model_ms)[0, 1]:.3f}",
+            "",
+            "| length | n | Δ outside model, mean ms [95% CI] | min | max | "
+            "instrumented envelope time (aead), median ms |",
+            "|---|---|---|---|---|---|",
+        ]
+        for length, g in v.groupby("length", sort=False):
+            lo, hi = t_ci(g.d_nonmodel_ms.to_numpy(), 0.95)
+            lines.append(
+                f"| {length} | {len(g)} | {f(g.d_nonmodel_ms.mean())} [{f(lo)}, {f(hi)}] | "
+                f"{f(g.d_nonmodel_ms.min())} | {f(g.d_nonmodel_ms.max())} | "
+                f"{f(g.aead_crypto_p50.median())} |"
+            )
+        if "gpu_device_util_p50" in v:
+            lines += [
+                "",
+                f"GPU Device Utilization (median per run): {f(v.gpu_device_util_p50.min(), 0)}"
+                f"–{f(v.gpu_device_util_p50.max(), 0)}%; llama-server RSS max "
+                f"{f(v.llama_rss_mib_max.max(), 0)} MiB; generation rate "
+                f"{f(v[['plain_tok_s_p50', 'aead_tok_s_p50']].min().min(), 1)}–"
+                f"{f(v[['plain_tok_s_p50', 'aead_tok_s_p50']].max().max(), 1)} tokens/s.",
+            ]
     lines += ["", "## Acceptance criteria", ""]
     for r in val["runs"]:
         bad = [k for k, v in r.items() if isinstance(v, bool) and not v and k != "pass"]

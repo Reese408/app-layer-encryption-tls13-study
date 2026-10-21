@@ -10,7 +10,7 @@
 | **[H]** | Hypothetical frontier-scale scenario, using only published architecture patterns ([references.md](references.md)) |
 | **[U]** | Unknown; would need another experiment |
 
-Numbers marked *H5 pending* will be filled in from `results/processed/<infer dir>/h5.md` once the H5 run is complete. They must not be estimated in advance.
+H5 figures come from `results/processed/20261021T155308Z-infer/h5.md` (see [reports/results-inference.md](../../reports/results-inference.md)).
 
 ## 1. Inference-heavy requests
 
@@ -21,7 +21,10 @@ Numbers marked *H5 pending* will be filled in from `results/processed/<infer dir
   - generation runs at about 52 tokens/s;
   - a 32-token request takes about 0.64 s and a 256-token request about 5 s;
   - the instrumented encryption time (client and server) was about 0.09% of the 32-token request and 0.008% of the 256-token request.
-  - *H5 pending:* the pre-registered differential test of whether the overhead share stays below 1%.
+- **[M] H5 (pre-registered test, 5 blocks):** the envelope's share of end-to-end latency was below 1% at both lengths. The one-sided 95% upper bounds were **0.36%** (32 tokens) and **0.65%** (256 tokens), and the point estimates were −0.46% and +0.09%.
+  - The run-level spread came from the model itself: the correlation with the difference in Ollama's own processing time was 0.997.
+  - The time outside the model differed by +0.29 and +0.75 ms, which is close to the directly timed envelope work of about 0.5 ms (exploratory).
+- **[M] Experiment D:** AES-GCM is 7–13% of the server's envelope cost; Base64 and JSON handling are 78–94%.
 - **[I]** At these sizes, both the absolute envelope cost (well under 1 ms for 1 KiB prompts) and the generation cost (milliseconds per token) are nearly independent of mode. The relative share therefore falls roughly as 1/latency. The worst case for any threshold claim is the *shortest* response, which is why H5 tests 32 tokens.
 - **[E]** If the per-request envelope cost is *c* and inference latency is *T*, the share is ≈ *c*/*T*. For *c* below 1 ms and *T* of hundreds of milliseconds to seconds, which is typical of interactive generation, the share is small. This assumes envelope cost is independent of model size, which holds because the envelope processes bytes, not tokens.
   - **Exception:** very large prompts, such as long-context retrieval-augmented generation (RAG) with hundreds of KiB of documents, push *c* up. Experiment A's 256 KiB cell cost about +1.3 ms per request at 1 VU, and more under load.
@@ -63,7 +66,7 @@ See [security-analysis.md](security-analysis.md) §5. In brief:
 
 ## 6. What the paper may and may not say
 
-- **May:** "On the test system, the envelope's added latency was X% (CI …) of a 32-token inference request." *(H5 pending)* The paper may also extrapolate, under the stated assumptions of §1–3, to the conditions under which the share stays small.
+- **May:** "On the test system, the envelope's share of end-to-end latency was below 1% for 32- and 256-token responses from a local 8B model, with one-sided 95% upper bounds of 0.36% and 0.65%." The paper may also extrapolate, under the stated assumptions of §1–3, to the conditions under which the share stays small.
 - **May not:**
   - "Encryption is negligible in ChatGPT or Claude." Their infrastructure was not measured.
   - "Encryption has no effect at scale." Concurrency was not tested.

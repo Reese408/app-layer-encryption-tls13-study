@@ -22,7 +22,7 @@ TLS 1.3 protects each hop between two TLS endpoints [RFC 8446] **[S]**. Wherever
 
 - **The endpoints.** A compromised client or origin holds both the keys and the plaintext **[D]**.
 - **Metadata.** Sizes (AES-GCM preserves length, plus a fixed overhead and Base64 expansion of about 33–36% **[M]**), timing, route, key ID, and in this implementation the `Server-Timing` header **[D]**.
-  - In inference, timing reveals the response length. Generation time is linear in the number of tokens, at about 19.3 ms per token in the smoke check **[M, pipeline check only; replaced by the H5 result]**.
+  - In inference, timing reveals the response length. Generation time is linear in the number of tokens, at about 21 ms per token on the test system (H5 full run, reports/results-inference.md §2.4) **[M]**.
 - **Replay on the same route.** A captured envelope can be resent and is accepted. The study has no timestamp, sequence number or nonce cache **[D]**.
 - **Availability.** Decryption adds per-request CPU (18–53% more server CPU per request in Experiment A **[M]**), and unauthenticated garbage still costs a parse and a tag check **[D]**.
 - **The model hop (Phase 4).** The API decrypts and forwards the prompt to Ollama in plaintext over local HTTP. The model must see plaintext **[D]**. Protecting a prompt up to the model would require the envelope to terminate inside the inference server, or in an attested trusted execution environment as in Apple's Private Cloud Compute design. There, load balancers and gateways "do not have the keys required to decrypt the user's request" [Apple PCC 2024] **[S]**.

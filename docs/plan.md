@@ -76,9 +76,9 @@ Status markers: ☐ not started · ◐ in progress · ☑ done (verified by exec
 | 4.1 | `/v1/infer` endpoint calling Ollama `qwen3:8b` with `temperature=0`, `seed=42`, `think=false`, `num_predict` ∈ {32, 256} (deviation 9), and a fixed prompt set |
 | 4.2 | One virtual user, two response lengths, interleaved modes, five blocks (deviation 9). The concurrency-4 cell is deferred. |
 | 4.3 | Separate reporting of inference time (from Ollama's `eval_duration` / `total_duration` and the `infer` server-timing value) and encryption time |
-| 4.4 ◐ | Determinism check ☑ (40/40 to the token limit, byte-identical repeats), then the pilot ☑ (`infer-pilot`, 6/6 valid; [reports/infer-pilot.md](../reports/infer-pilot.md)), then the owner's gate (G7 ☑ approved 2026-10-21: full run unchanged, GPU counters kept on, pilot issues 1–2 handled in reporting only), then the full run (`infer`, gated) |
+| 4.4 ☑ | Determinism check ☑ (40/40 to the token limit, byte-identical repeats), then the pilot ☑ (`infer-pilot`, 6/6 valid; [reports/infer-pilot.md](../reports/infer-pilot.md)), then the owner's gate (G7 ☑ approved 2026-10-21: full run unchanged, GPU counters kept on, pilot issues 1–2 handled in reporting only), then the full run ☑ (`infer`, 10/10 valid, H5 supported at both lengths; [reports/results-inference.md](../reports/results-inference.md)) |
 | 4.6 | Research notes (not paper text): [security analysis](notes/security-analysis.md), [frontier and agentic implications](notes/frontier-implications.md), [verified references](notes/references.md) |
-| 4.5 | G8 ☑ approved 2026-10-21. After H5: an in-process breakdown of envelope cost (AES-GCM vs Base64 vs JSON), with no change to the API. Protocol in research-design.md §8. |
+| 4.5 ☑ | G8 ☑ approved 2026-10-21; executed (`results/raw/20261021T162323Z-envelope-micro`). After H5: an in-process breakdown of envelope cost (AES-GCM vs Base64 vs JSON), with no change to the API. Protocol in research-design.md §8. |
 
 ## Decisions for owner review
 

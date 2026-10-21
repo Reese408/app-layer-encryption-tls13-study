@@ -3,6 +3,11 @@
 # Application-Layer Authenticated Encryption over TLS 1.3: A Controlled Performance Study
 
 > **Status: experiments complete; results report drafted ([reports/results.md](reports/results.md)), awaiting owner review.** Experiment A (90-run closed-loop matrix) and Experiment B (30-run open loop) were run on 2026-10-20/21; all 120 runs pass every pre-specified acceptance criterion. Pilot and validation: [reports/pilot.md](reports/pilot.md).
+>
+> **Phase 4 (branch `phase-4-inference`): complete, awaiting owner review.**
+> - **Experiment C (H5, local `qwen3:8b` inference).** 10/10 runs valid. The envelope's share of end-to-end latency is below 1% at both response lengths, with one-sided 95% upper bounds of 0.36% and 0.65%.
+> - **Experiment D (envelope cost breakdown).** AES-GCM is 7–13% of the server-side envelope cost; Base64 and JSON handling are 78–94%.
+> - Report: [reports/results-inference.md](reports/results-inference.md). Research notes: [docs/notes/](docs/notes/).
 
 ## Abstract
 
