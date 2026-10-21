@@ -136,7 +136,7 @@ Tail latency at 1 VU is the least stable measurement.
 | # | Problem | Resolution |
 |---|---|---|
 | P1 | k6 v2.3 has no `performance.now()`, so per-request client timers have 1 ms resolution | In the pilot, per-request client timers are reported as means only. Client cost is measured as `iteration_duration − http_req_duration` and with a loop-timed microbenchmark. **Resolved after review (§10):** later runs use k6's monotonic sub-µs clock. |
-| P2 | k6 v2.3 rejects the `maxVersion` TLS option | Removed. TLS 1.3 is still enforced by k6 `minVersion`, the server's minimum version, and a per-request `tls_version` check. |
+| P2 | k6 v2.3 rejects the `maxVersion` TLS option | Removed. TLS 1.3 is still enforced by the server's minimum version and verified by a per-request `tls_version` check. *(Corrected 2026-10-21: an earlier version of this row also credited k6 `minVersion`, which k6 v2.3 ignores; see plan.md deviation 3.)* |
 | P3 | At more than 10⁴ req/s, per-request k6 CSV output would be about 10⁷ rows per run | Dropped. The k6 summary, whose percentiles are exact over all measured samples, is the raw record. **Resolved after review (R6, §10):** a bounded, deterministic sample is added alongside the summary. |
 | P4 | k6 `handleSummary` runs in a separate JavaScript runtime, so the microbenchmark lost its module-level results | Results are now emitted as tagged k6 metrics |
 | P5 | The handler-level `app` timer includes awaiting the request body, so it absorbs queueing when the server is saturated. The first aggregation showed a misleading 1.0% crypto share at 256 KiB / 64 VUs. | The share is now computed against decrypt + work + encrypt. `app` is retained as raw data but not used as a denominator. |
