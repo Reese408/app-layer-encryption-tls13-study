@@ -148,7 +148,7 @@ Each prompt × length combination is generated 5 times directly against Ollama, 
 
 | Measure | Definition |
 |---|---|
-| **E2E** (primary) | k6 `iteration_duration` of one request: client encryption (aead), HTTP request, client decryption (aead), and response checking |
+| **E2E** (primary) | Time from the start of the k6 iteration to the end of response checking, on k6's monotonic clock (`iter_ms`, defined as in `bench.js`). It covers client encryption (aead), the HTTP request, client decryption (aead), and response parsing and checking. *Clarified before any H5 data:* k6's built-in `iteration_duration` also includes writing the request's log line and hashing the response, which is equal in both modes. It is kept as a cross-check. |
 | HTTP (secondary) | k6 `http_req_duration` |
 | Client crypto | k6 encrypt and decrypt timers |
 | Server crypto | `Server-Timing` `dec` and `enc` |

@@ -1,4 +1,4 @@
-.PHONY: setup lint test up down validate smoke pilot validate-pipeline bench openloop analyze stats check-run dashboard grafana grafana-down
+.PHONY: setup lint test up down validate smoke pilot validate-pipeline bench openloop infer-determinism infer-pilot infer h5 analyze stats check-run dashboard grafana grafana-down
 
 PY := uv run python
 
@@ -7,6 +7,7 @@ setup:            ## venv, local CA/certs, AEAD keys, payload fixtures, API imag
 	./scripts/gen_certs.sh
 	$(PY) scripts/gen_keys.py
 	$(PY) scripts/gen_payloads.py
+	$(PY) scripts/gen_prompts.py
 	docker compose build
 	docker compose pull k6
 
@@ -41,6 +42,18 @@ bench: up         ## full 90-run closed-loop matrix (requires explicit confirmat
 
 openloop: up      ## separate open-loop experiment, 30 runs (requires confirmation flag)
 	$(PY) scripts/run_matrix.py --profile openloop --allow-full
+
+infer-determinism: ## Experiment C: model determinism check (direct to host Ollama)
+	$(PY) scripts/run_infer.py --determinism
+
+infer-pilot: up   ## Experiment C pilot: 3 blocks x 2 lengths, interleaved modes
+	$(PY) scripts/run_infer.py --profile infer-pilot
+
+infer: up         ## Experiment C (H5) full run, 5 blocks (owner gate G7; confirmation flag)
+	$(PY) scripts/run_infer.py --profile infer --allow-full
+
+h5:               ## RUN=results/raw/<dir>: Experiment C acceptance criteria and H5 analysis
+	$(PY) analysis/h5.py $(RUN)
 
 analyze:          ## RUN=results/raw/<dir> (defaults to latest)
 	$(PY) analysis/aggregate.py $(RUN)

@@ -47,3 +47,14 @@ export async function openToB64(keys, envelopeText, aadBytes) {
   );
   return encoding.b64encode(pt, 'std');
 }
+
+// Returns the plaintext as an ArrayBuffer (Phase 4: the response is parsed, not compared).
+export async function openBytes(keys, envelopeText, aadBytes) {
+  const env = JSON.parse(envelopeText);
+  if (env.v !== 1 || env.kid !== keys.kid) throw new Error('invalid_envelope');
+  return crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: encoding.b64decode(env.n, 'std'), additionalData: aadBytes, tagLength: 128 },
+    keys.s2c,
+    encoding.b64decode(env.ct, 'std'),
+  );
+}
