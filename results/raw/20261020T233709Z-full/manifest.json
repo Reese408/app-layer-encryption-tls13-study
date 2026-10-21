@@ -1,0 +1,1064 @@
+{
+  "profile": "full",
+  "started_utc": "2026-10-20T23:37:09.380135+00:00",
+  "git": {
+    "commit": "49c57b7fe310544ce46d7f99848285ee5e39d104",
+    "dirty": false
+  },
+  "config": {
+    "seed": 20261020,
+    "cooldown_s": 3,
+    "client_cpu_limit": 8.0,
+    "api_cpu_limit": 2.0,
+    "client_saturation_threshold": 0.85,
+    "require_ac_power": true,
+    "restart_per_run": true,
+    "idle_baseline_s": 2,
+    "sampling": {
+      "every": {
+        "1k": 101,
+        "16k": 25,
+        "256k": 3
+      },
+      "cap": 50000
+    },
+    "profile": {
+      "gated": true,
+      "modes": [
+        "plain",
+        "aead"
+      ],
+      "sizes": [
+        "1k",
+        "16k",
+        "256k"
+      ],
+      "vus": [
+        1,
+        16,
+        64
+      ],
+      "reps": 5,
+      "warmup_s": 10,
+      "duration_s": 60,
+      "smoke": false
+    }
+  },
+  "run_order": [
+    {
+      "seq": 0,
+      "rep": 0,
+      "mode": "aead",
+      "size": "256k",
+      "vus": 16,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "000-aead-256k-c16-r0"
+    },
+    {
+      "seq": 1,
+      "rep": 0,
+      "mode": "aead",
+      "size": "256k",
+      "vus": 64,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "001-aead-256k-c64-r0"
+    },
+    {
+      "seq": 2,
+      "rep": 0,
+      "mode": "plain",
+      "size": "16k",
+      "vus": 1,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "002-plain-16k-c1-r0"
+    },
+    {
+      "seq": 3,
+      "rep": 0,
+      "mode": "plain",
+      "size": "256k",
+      "vus": 16,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "003-plain-256k-c16-r0"
+    },
+    {
+      "seq": 4,
+      "rep": 0,
+      "mode": "aead",
+      "size": "1k",
+      "vus": 16,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "004-aead-1k-c16-r0"
+    },
+    {
+      "seq": 5,
+      "rep": 0,
+      "mode": "aead",
+      "size": "1k",
+      "vus": 64,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "005-aead-1k-c64-r0"
+    },
+    {
+      "seq": 6,
+      "rep": 0,
+      "mode": "plain",
+      "size": "16k",
+      "vus": 64,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "006-plain-16k-c64-r0"
+    },
+    {
+      "seq": 7,
+      "rep": 0,
+      "mode": "plain",
+      "size": "1k",
+      "vus": 1,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "007-plain-1k-c1-r0"
+    },
+    {
+      "seq": 8,
+      "rep": 0,
+      "mode": "plain",
+      "size": "16k",
+      "vus": 16,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "008-plain-16k-c16-r0"
+    },
+    {
+      "seq": 9,
+      "rep": 0,
+      "mode": "aead",
+      "size": "16k",
+      "vus": 1,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "009-aead-16k-c1-r0"
+    },
+    {
+      "seq": 10,
+      "rep": 0,
+      "mode": "aead",
+      "size": "16k",
+      "vus": 16,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "010-aead-16k-c16-r0"
+    },
+    {
+      "seq": 11,
+      "rep": 0,
+      "mode": "plain",
+      "size": "256k",
+      "vus": 64,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "011-plain-256k-c64-r0"
+    },
+    {
+      "seq": 12,
+      "rep": 0,
+      "mode": "plain",
+      "size": "1k",
+      "vus": 64,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "012-plain-1k-c64-r0"
+    },
+    {
+      "seq": 13,
+      "rep": 0,
+      "mode": "aead",
+      "size": "16k",
+      "vus": 64,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "013-aead-16k-c64-r0"
+    },
+    {
+      "seq": 14,
+      "rep": 0,
+      "mode": "aead",
+      "size": "1k",
+      "vus": 1,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "014-aead-1k-c1-r0"
+    },
+    {
+      "seq": 15,
+      "rep": 0,
+      "mode": "aead",
+      "size": "256k",
+      "vus": 1,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "015-aead-256k-c1-r0"
+    },
+    {
+      "seq": 16,
+      "rep": 0,
+      "mode": "plain",
+      "size": "1k",
+      "vus": 16,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "016-plain-1k-c16-r0"
+    },
+    {
+      "seq": 17,
+      "rep": 0,
+      "mode": "plain",
+      "size": "256k",
+      "vus": 1,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "017-plain-256k-c1-r0"
+    },
+    {
+      "seq": 18,
+      "rep": 1,
+      "mode": "aead",
+      "size": "256k",
+      "vus": 64,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "018-aead-256k-c64-r1"
+    },
+    {
+      "seq": 19,
+      "rep": 1,
+      "mode": "plain",
+      "size": "16k",
+      "vus": 1,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "019-plain-16k-c1-r1"
+    },
+    {
+      "seq": 20,
+      "rep": 1,
+      "mode": "aead",
+      "size": "16k",
+      "vus": 1,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "020-aead-16k-c1-r1"
+    },
+    {
+      "seq": 21,
+      "rep": 1,
+      "mode": "plain",
+      "size": "256k",
+      "vus": 1,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "021-plain-256k-c1-r1"
+    },
+    {
+      "seq": 22,
+      "rep": 1,
+      "mode": "aead",
+      "size": "256k",
+      "vus": 1,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "022-aead-256k-c1-r1"
+    },
+    {
+      "seq": 23,
+      "rep": 1,
+      "mode": "plain",
+      "size": "256k",
+      "vus": 64,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "023-plain-256k-c64-r1"
+    },
+    {
+      "seq": 24,
+      "rep": 1,
+      "mode": "plain",
+      "size": "1k",
+      "vus": 1,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "024-plain-1k-c1-r1"
+    },
+    {
+      "seq": 25,
+      "rep": 1,
+      "mode": "plain",
+      "size": "16k",
+      "vus": 64,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "025-plain-16k-c64-r1"
+    },
+    {
+      "seq": 26,
+      "rep": 1,
+      "mode": "aead",
+      "size": "1k",
+      "vus": 16,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "026-aead-1k-c16-r1"
+    },
+    {
+      "seq": 27,
+      "rep": 1,
+      "mode": "plain",
+      "size": "1k",
+      "vus": 64,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "027-plain-1k-c64-r1"
+    },
+    {
+      "seq": 28,
+      "rep": 1,
+      "mode": "aead",
+      "size": "16k",
+      "vus": 64,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "028-aead-16k-c64-r1"
+    },
+    {
+      "seq": 29,
+      "rep": 1,
+      "mode": "aead",
+      "size": "256k",
+      "vus": 16,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "029-aead-256k-c16-r1"
+    },
+    {
+      "seq": 30,
+      "rep": 1,
+      "mode": "plain",
+      "size": "16k",
+      "vus": 16,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "030-plain-16k-c16-r1"
+    },
+    {
+      "seq": 31,
+      "rep": 1,
+      "mode": "aead",
+      "size": "16k",
+      "vus": 16,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "031-aead-16k-c16-r1"
+    },
+    {
+      "seq": 32,
+      "rep": 1,
+      "mode": "plain",
+      "size": "1k",
+      "vus": 16,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "032-plain-1k-c16-r1"
+    },
+    {
+      "seq": 33,
+      "rep": 1,
+      "mode": "plain",
+      "size": "256k",
+      "vus": 16,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "033-plain-256k-c16-r1"
+    },
+    {
+      "seq": 34,
+      "rep": 1,
+      "mode": "aead",
+      "size": "1k",
+      "vus": 1,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "034-aead-1k-c1-r1"
+    },
+    {
+      "seq": 35,
+      "rep": 1,
+      "mode": "aead",
+      "size": "1k",
+      "vus": 64,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "035-aead-1k-c64-r1"
+    },
+    {
+      "seq": 36,
+      "rep": 2,
+      "mode": "plain",
+      "size": "16k",
+      "vus": 1,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "036-plain-16k-c1-r2"
+    },
+    {
+      "seq": 37,
+      "rep": 2,
+      "mode": "aead",
+      "size": "16k",
+      "vus": 1,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "037-aead-16k-c1-r2"
+    },
+    {
+      "seq": 38,
+      "rep": 2,
+      "mode": "plain",
+      "size": "1k",
+      "vus": 1,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "038-plain-1k-c1-r2"
+    },
+    {
+      "seq": 39,
+      "rep": 2,
+      "mode": "plain",
+      "size": "16k",
+      "vus": 64,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "039-plain-16k-c64-r2"
+    },
+    {
+      "seq": 40,
+      "rep": 2,
+      "mode": "plain",
+      "size": "256k",
+      "vus": 16,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "040-plain-256k-c16-r2"
+    },
+    {
+      "seq": 41,
+      "rep": 2,
+      "mode": "aead",
+      "size": "1k",
+      "vus": 16,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "041-aead-1k-c16-r2"
+    },
+    {
+      "seq": 42,
+      "rep": 2,
+      "mode": "plain",
+      "size": "256k",
+      "vus": 64,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "042-plain-256k-c64-r2"
+    },
+    {
+      "seq": 43,
+      "rep": 2,
+      "mode": "plain",
+      "size": "256k",
+      "vus": 1,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "043-plain-256k-c1-r2"
+    },
+    {
+      "seq": 44,
+      "rep": 2,
+      "mode": "aead",
+      "size": "256k",
+      "vus": 64,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "044-aead-256k-c64-r2"
+    },
+    {
+      "seq": 45,
+      "rep": 2,
+      "mode": "aead",
+      "size": "256k",
+      "vus": 16,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "045-aead-256k-c16-r2"
+    },
+    {
+      "seq": 46,
+      "rep": 2,
+      "mode": "plain",
+      "size": "1k",
+      "vus": 64,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "046-plain-1k-c64-r2"
+    },
+    {
+      "seq": 47,
+      "rep": 2,
+      "mode": "aead",
+      "size": "1k",
+      "vus": 1,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "047-aead-1k-c1-r2"
+    },
+    {
+      "seq": 48,
+      "rep": 2,
+      "mode": "aead",
+      "size": "16k",
+      "vus": 64,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "048-aead-16k-c64-r2"
+    },
+    {
+      "seq": 49,
+      "rep": 2,
+      "mode": "aead",
+      "size": "256k",
+      "vus": 1,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "049-aead-256k-c1-r2"
+    },
+    {
+      "seq": 50,
+      "rep": 2,
+      "mode": "aead",
+      "size": "16k",
+      "vus": 16,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "050-aead-16k-c16-r2"
+    },
+    {
+      "seq": 51,
+      "rep": 2,
+      "mode": "plain",
+      "size": "16k",
+      "vus": 16,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "051-plain-16k-c16-r2"
+    },
+    {
+      "seq": 52,
+      "rep": 2,
+      "mode": "aead",
+      "size": "1k",
+      "vus": 64,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "052-aead-1k-c64-r2"
+    },
+    {
+      "seq": 53,
+      "rep": 2,
+      "mode": "plain",
+      "size": "1k",
+      "vus": 16,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "053-plain-1k-c16-r2"
+    },
+    {
+      "seq": 54,
+      "rep": 3,
+      "mode": "aead",
+      "size": "16k",
+      "vus": 16,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "054-aead-16k-c16-r3"
+    },
+    {
+      "seq": 55,
+      "rep": 3,
+      "mode": "aead",
+      "size": "256k",
+      "vus": 64,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "055-aead-256k-c64-r3"
+    },
+    {
+      "seq": 56,
+      "rep": 3,
+      "mode": "aead",
+      "size": "1k",
+      "vus": 64,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "056-aead-1k-c64-r3"
+    },
+    {
+      "seq": 57,
+      "rep": 3,
+      "mode": "aead",
+      "size": "256k",
+      "vus": 16,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "057-aead-256k-c16-r3"
+    },
+    {
+      "seq": 58,
+      "rep": 3,
+      "mode": "plain",
+      "size": "16k",
+      "vus": 16,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "058-plain-16k-c16-r3"
+    },
+    {
+      "seq": 59,
+      "rep": 3,
+      "mode": "aead",
+      "size": "256k",
+      "vus": 1,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "059-aead-256k-c1-r3"
+    },
+    {
+      "seq": 60,
+      "rep": 3,
+      "mode": "plain",
+      "size": "16k",
+      "vus": 64,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "060-plain-16k-c64-r3"
+    },
+    {
+      "seq": 61,
+      "rep": 3,
+      "mode": "plain",
+      "size": "1k",
+      "vus": 16,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "061-plain-1k-c16-r3"
+    },
+    {
+      "seq": 62,
+      "rep": 3,
+      "mode": "aead",
+      "size": "16k",
+      "vus": 64,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "062-aead-16k-c64-r3"
+    },
+    {
+      "seq": 63,
+      "rep": 3,
+      "mode": "aead",
+      "size": "1k",
+      "vus": 1,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "063-aead-1k-c1-r3"
+    },
+    {
+      "seq": 64,
+      "rep": 3,
+      "mode": "plain",
+      "size": "1k",
+      "vus": 1,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "064-plain-1k-c1-r3"
+    },
+    {
+      "seq": 65,
+      "rep": 3,
+      "mode": "aead",
+      "size": "16k",
+      "vus": 1,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "065-aead-16k-c1-r3"
+    },
+    {
+      "seq": 66,
+      "rep": 3,
+      "mode": "plain",
+      "size": "256k",
+      "vus": 1,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "066-plain-256k-c1-r3"
+    },
+    {
+      "seq": 67,
+      "rep": 3,
+      "mode": "plain",
+      "size": "256k",
+      "vus": 16,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "067-plain-256k-c16-r3"
+    },
+    {
+      "seq": 68,
+      "rep": 3,
+      "mode": "aead",
+      "size": "1k",
+      "vus": 16,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "068-aead-1k-c16-r3"
+    },
+    {
+      "seq": 69,
+      "rep": 3,
+      "mode": "plain",
+      "size": "1k",
+      "vus": 64,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "069-plain-1k-c64-r3"
+    },
+    {
+      "seq": 70,
+      "rep": 3,
+      "mode": "plain",
+      "size": "16k",
+      "vus": 1,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "070-plain-16k-c1-r3"
+    },
+    {
+      "seq": 71,
+      "rep": 3,
+      "mode": "plain",
+      "size": "256k",
+      "vus": 64,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "071-plain-256k-c64-r3"
+    },
+    {
+      "seq": 72,
+      "rep": 4,
+      "mode": "plain",
+      "size": "1k",
+      "vus": 64,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "072-plain-1k-c64-r4"
+    },
+    {
+      "seq": 73,
+      "rep": 4,
+      "mode": "plain",
+      "size": "1k",
+      "vus": 16,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "073-plain-1k-c16-r4"
+    },
+    {
+      "seq": 74,
+      "rep": 4,
+      "mode": "aead",
+      "size": "1k",
+      "vus": 16,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "074-aead-1k-c16-r4"
+    },
+    {
+      "seq": 75,
+      "rep": 4,
+      "mode": "plain",
+      "size": "256k",
+      "vus": 64,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "075-plain-256k-c64-r4"
+    },
+    {
+      "seq": 76,
+      "rep": 4,
+      "mode": "aead",
+      "size": "16k",
+      "vus": 64,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "076-aead-16k-c64-r4"
+    },
+    {
+      "seq": 77,
+      "rep": 4,
+      "mode": "aead",
+      "size": "16k",
+      "vus": 16,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "077-aead-16k-c16-r4"
+    },
+    {
+      "seq": 78,
+      "rep": 4,
+      "mode": "plain",
+      "size": "256k",
+      "vus": 16,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "078-plain-256k-c16-r4"
+    },
+    {
+      "seq": 79,
+      "rep": 4,
+      "mode": "plain",
+      "size": "256k",
+      "vus": 1,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "079-plain-256k-c1-r4"
+    },
+    {
+      "seq": 80,
+      "rep": 4,
+      "mode": "aead",
+      "size": "16k",
+      "vus": 1,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "080-aead-16k-c1-r4"
+    },
+    {
+      "seq": 81,
+      "rep": 4,
+      "mode": "aead",
+      "size": "1k",
+      "vus": 1,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "081-aead-1k-c1-r4"
+    },
+    {
+      "seq": 82,
+      "rep": 4,
+      "mode": "plain",
+      "size": "16k",
+      "vus": 16,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "082-plain-16k-c16-r4"
+    },
+    {
+      "seq": 83,
+      "rep": 4,
+      "mode": "plain",
+      "size": "1k",
+      "vus": 1,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "083-plain-1k-c1-r4"
+    },
+    {
+      "seq": 84,
+      "rep": 4,
+      "mode": "plain",
+      "size": "16k",
+      "vus": 1,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "084-plain-16k-c1-r4"
+    },
+    {
+      "seq": 85,
+      "rep": 4,
+      "mode": "plain",
+      "size": "16k",
+      "vus": 64,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "085-plain-16k-c64-r4"
+    },
+    {
+      "seq": 86,
+      "rep": 4,
+      "mode": "aead",
+      "size": "1k",
+      "vus": 64,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "086-aead-1k-c64-r4"
+    },
+    {
+      "seq": 87,
+      "rep": 4,
+      "mode": "aead",
+      "size": "256k",
+      "vus": 1,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "087-aead-256k-c1-r4"
+    },
+    {
+      "seq": 88,
+      "rep": 4,
+      "mode": "aead",
+      "size": "256k",
+      "vus": 64,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "088-aead-256k-c64-r4"
+    },
+    {
+      "seq": 89,
+      "rep": 4,
+      "mode": "aead",
+      "size": "256k",
+      "vus": 16,
+      "executor": "constant-vus",
+      "rate": null,
+      "run_id": "089-aead-256k-c16-r4"
+    }
+  ],
+  "host": {
+    "os": "macOS 26.6",
+    "cpu": "Apple M5 Pro",
+    "ncpu": 18,
+    "mem_bytes": 68719476736,
+    "arch": "arm64",
+    "power": "Now drawing from 'AC Power'"
+  },
+  "docker": {
+    "Client": {
+      "Version": "29.4.0",
+      "ApiVersion": "1.54",
+      "DefaultAPIVersion": "1.54",
+      "GitCommit": "9d7ad9f",
+      "GoVersion": "go1.26.4",
+      "Os": "darwin",
+      "Arch": "arm64",
+      "BuildTime": "Fri Aug  7 04:38:56 2026",
+      "Context": "desktop-linux"
+    },
+    "Server": {
+      "Platform": {
+        "Name": "Docker Desktop 4.93.0 (240920)"
+      },
+      "Version": "29.8.1",
+      "ApiVersion": "1.56",
+      "MinAPIVersion": "1.40",
+      "Os": "linux",
+      "Arch": "arm64",
+      "Components": [
+        {
+          "Name": "Engine",
+          "Version": "29.8.1",
+          "Details": {
+            "ApiVersion": "1.56",
+            "Arch": "arm64",
+            "BuildTime": "Tue Sep 15 16:25:04 2026",
+            "Experimental": "false",
+            "GitCommit": "464cd50",
+            "GoVersion": "go1.26.8",
+            "KernelVersion": "7.0.14-linuxkit",
+            "MinAPIVersion": "1.40",
+            "Module": "github.com/moby/moby/v2",
+            "ModuleVersion": "v2.0.0+unknown",
+            "Os": "linux"
+          }
+        },
+        {
+          "Name": "containerd",
+          "Version": "v2.3.5",
+          "Details": {
+            "GitCommit": "1294c24a7da8e5a793ed378161673abe94118892"
+          }
+        },
+        {
+          "Name": "runc",
+          "Version": "1.5.1",
+          "Details": {
+            "GitCommit": "v1.5.1-0-g8f2685a4"
+          }
+        },
+        {
+          "Name": "docker-init",
+          "Version": "0.19.0",
+          "Details": {
+            "GitCommit": "de40ad0"
+          }
+        }
+      ],
+      "GitCommit": "464cd50",
+      "GoVersion": "go1.26.8",
+      "KernelVersion": "7.0.14-linuxkit",
+      "BuildTime": "2026-09-15T16:25:04.000000000+00:00"
+    }
+  },
+  "docker_vm": {
+    "ncpu": 18,
+    "mem_bytes": 8317267968
+  },
+  "compose": "5.5.1",
+  "k6_version": "k6 v2.3.0 (commit/e088784614, go1.27.1, linux/arm64)",
+  "api_image_id": "sha256:0eff0f200c84a90ec4c9b4a4c8f8e2394e3bbbc71d987e9635600ee1f7f0d24f",
+  "api_python_packages": [
+    "annotated-doc==0.0.5",
+    "annotated-types==0.8.0",
+    "anyio==4.15.1",
+    "cffi==2.1.1",
+    "click==8.5.0",
+    "cryptography==50.0.2",
+    "fastapi==0.153.0",
+    "h11==0.16.0",
+    "httptools==0.9.0",
+    "idna==3.20",
+    "opentelemetry-api==1.45.1",
+    "pycparser==3.11",
+    "pydantic==2.14.1",
+    "pydantic_core==2.50.1",
+    "python-dotenv==1.2.4",
+    "PyYAML==6.0.3",
+    "starlette==1.9.0",
+    "typing-inspection==0.4.4",
+    "typing_extensions==4.16.0",
+    "uvicorn==0.54.0",
+    "uvloop==0.23.0",
+    "watchfiles==1.3.0",
+    "websockets==17.3"
+  ],
+  "api_python": "Python 3.12.15 (main, Oct  6 2026, 02:08:11) [GCC 14.2.0]",
+  "compose_sha256": "f0b298867448744f26a5b31ec3afce148f6fdf2d3bb0fe9f8272ea855a423658",
+  "fixtures_sha256": {
+    "payloads-16k.json": "b47e94f6381576817a37f4adc73b379c07be1556e1b54f8c4c1b4584ee5f30ff",
+    "payloads-1k.json": "de66c49d9a740e4cbfed3ad3c8c2d500e74f00c58c6caec66e282f295a55da41",
+    "payloads-256k.json": "2daa7c621c0af20668fe87f684fdc59850bb36745ea9f974752081c3fa1e474e"
+  },
+  "aead_kid": "k20261020T153227Z"
+}
