@@ -17,6 +17,8 @@ class Settings:
     key_file: str
     rounds: int
     max_messages_per_key: int
+    ollama_url: str = "http://host.docker.internal:11434"
+    ollama_model: str = "qwen3:8b"
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -28,4 +30,6 @@ class Settings:
             key_file=os.environ.get("AEAD_KEY_FILE", "/run/secrets/aead_keys"),
             rounds=int(os.environ.get("WORKLOAD_ROUNDS", DEFAULT_ROUNDS)),
             max_messages_per_key=int(os.environ.get("AEAD_MAX_MESSAGES_PER_KEY", 2**30)),
+            ollama_url=os.environ.get("OLLAMA_URL", "http://host.docker.internal:11434"),
+            ollama_model=os.environ.get("OLLAMA_MODEL", "qwen3:8b"),
         )

@@ -12,6 +12,9 @@ x-api: &api
   environment: &api-env
     WORKLOAD_ROUNDS: "16"
     AEAD_KEY_FILE: /run/secrets/aead_keys
+    # Phase 4 (/v1/infer only): Ollama runs natively on the host for Metal GPU access.
+    OLLAMA_URL: "http://host.docker.internal:11434"
+    OLLAMA_MODEL: "qwen3:8b"
   restart: "no"
   healthcheck:
     # Same probe as the Dockerfile; during start-up it runs every 250 ms so readiness after a
