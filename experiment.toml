@@ -138,4 +138,4 @@ executor = "infer"
 lengths = ["short", "long"]
 reps = 5
 measure_n = 48           # 24 per mode
-gpu_sampling = false     # decided at G7 from the pilot
+gpu_sampling = true      # G7b approved 2026-10-21 (modes interleaved, so equal cost)

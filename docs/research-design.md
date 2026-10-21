@@ -192,3 +192,37 @@ A run is valid only if all of the following hold. Invalid runs are kept, reporte
 4. The Ollama version and model digest are unchanged from the session start.
 5. Each mode received 24 measured requests (6 per prompt), in the pre-specified order.
 6. k6 CPU stayed below 85% of its limit.
+
+## 8. Experiment D: envelope cost breakdown (A1), protocol
+
+Approved by the repository owner on 2026-10-21 (gate G8) and committed before any A1 measurement. It runs **after** Experiment C, never during it.
+
+**Question.** How much of the server-side envelope cost measured in Experiments A and C is the AES-GCM operation, and how much is Base64 and JSON handling? This is a **descriptive breakdown**. No hypothesis is tested and no p-values are reported. It measures the server's Python implementation only. It does not measure the client's WebCrypto path or network bytes (wire sizes are already measured in Experiments A and C).
+
+**Environment.** The study's API image (`aead-study-api:local`: same Python, `cryptography` and OpenSSL as the API), run with `--cpus 2` (the API containers' limit), `--network none`, and the script mounted read-only. Keys are generated in-process; no key material is read or written.
+
+**Inputs.** The canonical request plaintexts of the Experiment A fixtures (1, 16 and 256 KiB; all four items in rotation), plus the Experiment C prompt bodies (about 1 KiB). These are the bytes the server actually seals or opens. For each size, the corresponding envelopes are produced once, before timing.
+
+**Operations**, mirroring `app/crypto_envelope.py` exactly:
+
+| Path | Whole operation | Components timed separately |
+|---|---|---|
+| seal | `EnvelopeCipher.seal` | `os.urandom(12)`; AAD construction; `AESGCM.encrypt`; Base64 encoding of nonce and ciphertext; `json.dumps(...).encode()` of the envelope |
+| open | `EnvelopeCipher.open` | `json.loads` of the envelope; Base64 decoding (`validate=True`) of nonce and ciphertext; `AESGCM.decrypt` |
+
+The **residual** is the whole operation minus the sum of its components: Python glue, dictionary construction, field checks and the key-usage counter. It is reported, not hidden.
+
+**Timing.**
+- Each operation runs in loops of *N* iterations. *N* is calibrated per operation so that one repetition takes at least 20 ms.
+- There are 25 repetitions, using `time.perf_counter_ns`, and the order of operations is shuffled per repetition with a fixed seed.
+- The statistic is the median time per operation over repetitions.
+- The whole procedure is replicated in **5 separate container processes**; the process is the unit. The report gives the median across processes and the min–max range.
+
+**Derived quantities** (per size and path):
+- cipher share = AES-GCM ÷ whole;
+- encoding share = (Base64 + JSON) ÷ whole;
+- residual share.
+
+As a consistency check, whole seal + open is compared with Experiment A's server `dec` + `enc` stage timings at 1 VU. Agreement is expected in order of magnitude only, because the server measures them under load, inside a request.
+
+**Limitations.** A microbenchmark has warm caches and no concurrent allocation pressure, so it measures *where* time goes, not the in-request total. The k6/WebCrypto client is not broken down. A binary envelope (A2) is not implemented. Whether to implement one is decided from these results and needs separate approval.
