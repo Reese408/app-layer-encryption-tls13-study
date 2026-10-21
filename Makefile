@@ -1,4 +1,4 @@
-.PHONY: setup lint test up down validate smoke pilot validate-pipeline bench openloop infer-determinism infer-pilot infer h5 analyze stats check-run dashboard grafana grafana-down
+.PHONY: setup lint test up down validate smoke pilot validate-pipeline bench openloop infer-determinism infer-pilot infer h5 figures analyze stats check-run dashboard grafana grafana-down
 
 PY := uv run python
 
@@ -54,6 +54,10 @@ infer: up         ## Experiment C (H5) full run, 5 blocks (owner gate G7; confir
 
 h5:               ## RUN=results/raw/<dir>: Experiment C acceptance criteria and H5 analysis
 	$(PY) analysis/h5.py $(RUN)
+
+figures:          ## publication figures (grayscale SVG + 600 DPI PNG) from results/processed
+	cd reports/figures && uv run --project ../.. python fig_h5_inference_overhead.py
+	cd reports/figures && uv run --project ../.. python fig_envelope_cost_breakdown.py
 
 analyze:          ## RUN=results/raw/<dir> (defaults to latest)
 	$(PY) analysis/aggregate.py $(RUN)
