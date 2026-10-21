@@ -76,7 +76,8 @@ Status markers: ☐ not started · ◐ in progress · ☑ done (verified by exec
 | 4.1 | `/v1/infer` endpoint calling Ollama `qwen3:8b` with `temperature=0`, `seed=42`, `think=false`, `num_predict` ∈ {32, 256} (deviation 9), and a fixed prompt set |
 | 4.2 | One virtual user, two response lengths, interleaved modes, five blocks (deviation 9). The concurrency-4 cell is deferred. |
 | 4.3 | Separate reporting of inference time (from Ollama's `eval_duration` / `total_duration` and the `infer` server-timing value) and encryption time |
-| 4.4 | Determinism check, then the pilot (`infer-pilot`, 3 blocks), then the owner's gate (G7), then the full run (`infer`, gated) |
+| 4.4 ◐ | Determinism check ☑ (40/40 to the token limit, byte-identical repeats), then the pilot ☑ (`infer-pilot`, 6/6 valid; [reports/infer-pilot.md](../reports/infer-pilot.md)), then the owner's gate (G7), then the full run (`infer`, gated) |
+| 4.6 | Research notes (not paper text): [security analysis](notes/security-analysis.md), [frontier and agentic implications](notes/frontier-implications.md), [verified references](notes/references.md) |
 | 4.5 | After H5, if approved (G8): an in-process breakdown of envelope cost (AES-GCM vs Base64 vs JSON), with no change to the API |
 
 ## Decisions for owner review
