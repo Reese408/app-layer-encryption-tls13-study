@@ -2,12 +2,17 @@
 
 # Application-Layer Authenticated Encryption over TLS 1.3: A Controlled Performance Study
 
-> **Status: experiments complete; results report drafted ([reports/results.md](reports/results.md)), awaiting owner review.** Experiment A (90-run closed-loop matrix) and Experiment B (30-run open loop) were run on 2026-10-20/21; all 120 runs pass every pre-specified acceptance criterion. Pilot and validation: [reports/pilot.md](reports/pilot.md).
->
-> **Phase 4 (branch `phase-4-inference`): complete, awaiting owner review.**
-> - **Experiment C (H5, local `qwen3:8b` inference).** 10/10 runs valid. The envelope's share of end-to-end latency is below 1% at both response lengths, with one-sided 95% upper bounds of 0.36% and 0.65%.
-> - **Experiment D (envelope cost breakdown).** AES-GCM is 7–13% of the server-side envelope cost; Base64 and JSON handling are 78–94%.
-> - Report: [reports/results-inference.md](reports/results-inference.md). Research notes: [docs/notes/](docs/notes/).
+> **Status: complete.** All experiments, raw data, analyses, and reports are on `main`.
+> - **Experiments A and B** (2026-10-20/21): a 90-run closed-loop matrix and a 30-run open loop. All 120 runs pass every pre-specified acceptance criterion. Report: [reports/results.md](reports/results.md). Pilot and validation: [reports/pilot.md](reports/pilot.md).
+> - **Experiment C (H5, local `qwen3:8b` inference)**: 10/10 runs valid. The envelope's share of end-to-end latency is below 1% at both response lengths, with one-sided 95% upper bounds of 0.36% and 0.65%.
+> - **Experiment D (envelope cost breakdown)**: AES-GCM is 7–13% of the server-side envelope cost. Base64 and JSON handling are 78–94%.
+> - Report for C and D: [reports/results-inference.md](reports/results-inference.md). Publication figures: [reports/figures/](reports/figures/). Research notes: [docs/notes/](docs/notes/).
+
+## Paper
+
+R. Redman, C. VanHesteren, S. Burns, and G. Zeager, "Performance Overhead of Application-Layer AES-256-GCM Encryption over TLS 1.3," CYB 485 Advanced Computer Security, Ashland University, Fall 2026.
+
+The paper cites the reports listed above. Every number in those reports can be reproduced from the raw run data in [`results/raw/`](results/raw/) with the scripts in [`analysis/`](analysis/).
 
 ## Abstract
 
@@ -34,16 +39,18 @@ The hypotheses, variables, and statistical method are in [docs/research-design.m
 │   ├── architecture.md       System design and data flow
 │   ├── threat-model.md       Assets, adversaries, in/out of scope
 │   ├── environment.md        Recorded host and tool inventory
-│   └── plan.md               Phased implementation plan and open decisions
+│   ├── plan.md               Phased implementation plan and open decisions
+│   └── notes/                Security analysis, frontier implications, references, handoff
 ├── app/                      FastAPI service (Phase 2)
 ├── k6/                       Load-test scripts (Phase 2)
 ├── tests/                    Functional and cryptographic tests (Phase 2)
 ├── scripts/                  Cert/key generation, run orchestration, resource sampling
+├── observability/            Post-hoc Prometheus/Grafana provisioning
 ├── analysis/                 Python analysis and charting (Phase 3)
 ├── results/
 │   ├── raw/                  Timestamped, unmodified benchmark output (committed)
 │   └── processed/            Derived tables (regenerable from raw/)
-├── reports/                  Findings write-up and figures (Phase 3)
+├── reports/                  Pilot, results, and inference reports; publication figures
 └── assets/
 ```
 
@@ -79,6 +86,11 @@ make openloop     # Experiment B: 30-run open-loop experiment; gated, analysed s
 make dashboard RUNS="results/raw/<dir> ..."  # static offline HTML dashboard
 make grafana RUNS="results/raw/<dir> ..."    # Prometheus (backfilled) + Grafana, http://127.0.0.1:3000
 make grafana-down
+make infer-determinism   # Experiment C: model determinism check (host Ollama)
+make infer-pilot         # Experiment C pilot
+make infer               # Experiment C (H5) full run; gated (--allow-full)
+make h5 RUN=results/raw/<dir>          # Experiment C acceptance criteria and H5 analysis
+make figures             # publication figures (SVG + 600 DPI PNG) from results/processed
 make down
 ```
 
