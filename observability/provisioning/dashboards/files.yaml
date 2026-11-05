@@ -1,0 +1,7 @@
+apiVersion: 1
+providers:
+  - name: aead-study
+    folder: AES-GCM over TLS 1.3 study
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards

@@ -1,0 +1,42 @@
+[
+  {
+    "service": "api-plain",
+    "client_offer": "-tls1_3",
+    "negotiated": true,
+    "protocol": "TLSv1.3",
+    "cipher": "TLS_AES_256_GCM_SHA384",
+    "cert_verified": true,
+    "expected_success": true,
+    "pass": true
+  },
+  {
+    "service": "api-plain",
+    "client_offer": "-tls1_2",
+    "negotiated": false,
+    "protocol": null,
+    "cipher": null,
+    "cert_verified": false,
+    "expected_success": false,
+    "pass": true
+  },
+  {
+    "service": "api-aead",
+    "client_offer": "-tls1_3",
+    "negotiated": true,
+    "protocol": "TLSv1.3",
+    "cipher": "TLS_AES_256_GCM_SHA384",
+    "cert_verified": true,
+    "expected_success": true,
+    "pass": true
+  },
+  {
+    "service": "api-aead",
+    "client_offer": "-tls1_2",
+    "negotiated": false,
+    "protocol": null,
+    "cipher": null,
+    "cert_verified": false,
+    "expected_success": false,
+    "pass": true
+  }
+]

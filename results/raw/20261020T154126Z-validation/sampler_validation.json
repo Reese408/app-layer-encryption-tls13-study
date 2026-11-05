@@ -1,0 +1,27 @@
+{
+  "samples": 18,
+  "expected": {
+    "cpu_pct_of_one_core": 100.0,
+    "mem_working_set_mib_min": 256.0
+  },
+  "measured": {
+    "cpu_pct_from_cumulative_counters": 99.8,
+    "cpu_pct_docker_formula_mean": 99.81,
+    "mem_working_set_mib_max": 276.0
+  },
+  "docker_stats_no_stream": {
+    "BlockIO": "0B / 0B",
+    "CPUPerc": "100.19%",
+    "Container": "aead-study-sampler-validation",
+    "ID": "6d792dfd8900",
+    "MemPerc": "51.43%",
+    "MemUsage": "263.3MiB / 512MiB",
+    "Name": "aead-study-sampler-validation",
+    "NetIO": "0B / 0B",
+    "PIDs": "1"
+  },
+  "pass": {
+    "cpu_within_10pct": true,
+    "mem_at_least_256mib": true
+  }
+}

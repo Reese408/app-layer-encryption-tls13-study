@@ -1,0 +1,3 @@
+# No scrape targets: all data is backfilled from recorded benchmark results.
+global:
+  scrape_interval: 1m

@@ -1,0 +1,5 @@
+[004-plain-1k-a7000-r0] measured_reqs=105004 rps=7000.3 p50=0.139ms p95=0.265ms p99=0.625ms checks=1 integrity=1 dropped=46
+time="2026-10-20T22:16:38Z" level=warning msg="There were unknown fields in the options exported in the script" error="json: unknown field \"minVersion\""
+time="2026-10-20T22:16:38Z" level=info msg="negotiated tls_version=tls1.3 cipher=TLS_AES_256_GCM_SHA384" source=console
+time="2026-10-20T22:16:38Z" level=warning msg="Insufficient VUs, reached 128 active VUs and cannot initialize more" executor=constant-arrival-rate scenario=bench
+time="2026-10-20T22:16:58Z" level=error msg="thresholds on metrics 'dropped_iterations' have been crossed"

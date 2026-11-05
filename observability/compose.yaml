@@ -1,0 +1,51 @@
+# Post-hoc observability stack: Prometheus (backfilled from recorded results) and Grafana.
+# It is NEVER running during a benchmark; it only reads results/processed/grafana/.
+# Use via `make grafana RUNS="results/raw/<dir> ..."` and `make grafana-down`.
+name: aead-study-obs
+
+services:
+  promtool:  # one-shot: OpenMetrics text -> Prometheus TSDB blocks
+    image: prom/prometheus:v2.53.0
+    profiles: ["backfill"]
+    user: "0:0"
+    entrypoint: ["promtool"]
+    command:
+      - tsdb
+      - create-blocks-from
+      - openmetrics
+      - --max-block-duration=24h
+      - /data/openmetrics.txt
+      - /data/tsdb
+    volumes:
+      - ../results/processed/grafana:/data
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    user: "0:0"
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/data/tsdb
+      - --storage.tsdb.retention.time=100y
+      - --query.lookback-delta=5s  # backfilled 1 s data; no stale series from earlier runs
+      - --enable-feature=promql-experimental-functions  # sort_by_label
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../results/processed/grafana:/data
+    ports:
+      - "127.0.0.1:9090:9090"
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    depends_on: [prometheus]
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Editor
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/results.json
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    volumes:
+      - ./provisioning:/etc/grafana/provisioning:ro
+      - ../results/processed/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "127.0.0.1:3000:3000"

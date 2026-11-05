@@ -1,0 +1,114 @@
+"""Tests for the analysis helpers and the k6 sample-line extraction."""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import pytest
+from scipy import stats as sps
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "analysis"))
+sys.path.insert(0, str(ROOT / "scripts"))
+
+import stats  # noqa: E402
+from run_matrix import SAMPLE_FIELDS, split_k6_log  # noqa: E402
+from validate_pipeline import ts_ns  # noqa: E402
+
+
+def test_holm_matches_textbook_example():
+    # Holm (1979) step-down: sorted p * (m - rank), then cumulative max, capped at 1.
+    p = [0.01, 0.04, 0.03, 0.005]
+    assert stats.holm(p) == pytest.approx([0.03, 0.06, 0.06, 0.02])
+
+
+def test_holm_counts_untestable_hypotheses_towards_m():
+    # A NaN p still counts in the family (as p = 1), so the correction cannot loosen.
+    out = stats.holm([0.02, float("nan"), 0.01])
+    assert np.isnan(out[1])
+    assert out[2] == pytest.approx(0.03) and out[0] == pytest.approx(0.04)
+
+
+def test_holm_uses_planned_family_size():
+    # Two cells tested out of nine planned: multipliers are 9 and 8, not 2 and 1.
+    assert stats.holm([0.001, 0.004], m=9) == pytest.approx([0.009, 0.032])
+    with pytest.raises(ValueError):
+        stats.holm([0.1, 0.2, 0.3], m=2)
+
+
+def test_sign_flip_minimum_attainable_p():
+    # All five differences positive: only the identity and the all-flip are as extreme.
+    assert stats.sign_flip_p(np.array([1.0, 2.0, 3.0, 4.0, 5.0])) == pytest.approx(2 / 32)
+
+
+def test_cliffs_delta_bounds():
+    a, b = np.array([3.0, 4.0]), np.array([1.0, 2.0])
+    assert stats.cliffs_delta(a, b) == 1.0
+    assert stats.cliffs_delta(b, a) == -1.0
+    assert stats.cliffs_delta(a, a) == 0.0
+
+
+def _runs(plain: list[float], aead: list[float]) -> pd.DataFrame:
+    rows = []
+    for rep, (p, a) in enumerate(zip(plain, aead, strict=True)):
+        for mode, v in (("plain", p), ("aead", a)):
+            rows.append(
+                {
+                    "rep": rep,
+                    "mode": mode,
+                    "size": "1k",
+                    "load": "c1",
+                    "load_order": 1,
+                    "lat_p50_ms": v,
+                }
+            )
+    return pd.DataFrame(rows)
+
+
+def test_paired_ratio_and_t_test_against_scipy():
+    plain = [1.0, 1.1, 0.9, 1.05, 0.95]
+    aead = [1.2, 1.3, 1.15, 1.25, 1.18]
+    row = stats.paired(_runs(plain, aead), "lat_p50_ms").iloc[0]
+    lr = np.log(np.array(aead) / np.array(plain))
+    assert row.ratio == pytest.approx(np.exp(lr.mean()))
+    assert row.p_t == pytest.approx(sps.ttest_rel(np.log(aead), np.log(plain)).pvalue)
+    assert row.ratio_ci95_lo < row.ratio < row.ratio_ci95_hi
+    assert row.delta == pytest.approx(np.mean(np.array(aead) - np.array(plain)))
+    assert row.blocks_aead_higher == 5
+    # Exact Mann-Whitney with complete separation, n = 5 vs 5: 2 / C(10, 5).
+    assert row.p_mannwhitney_exact == pytest.approx(2 / 252)
+
+
+def test_paired_pairs_by_block_not_by_order():
+    # Same values, rows shuffled: the result must not change.
+    df = _runs([1.0, 2.0, 3.0], [1.5, 2.5, 3.9])
+    a = stats.paired(df, "lat_p50_ms").iloc[0]
+    b = stats.paired(df.sample(frac=1, random_state=1), "lat_p50_ms").iloc[0]
+    assert a.ratio == pytest.approx(b.ratio) and a.p_t == pytest.approx(b.p_t)
+
+
+def test_split_k6_log_separates_samples():
+    fields = ",".join(str(i) for i in range(len(SAMPLE_FIELDS)))
+    text = (
+        'time="t" level=info msg="negotiated tls_version=tls1.3" source=console\n'
+        f'time="t" level=info msg="S,{fields}" source=console\n'
+        "[run] measured_reqs=10\n"
+    )
+    log, rows = split_k6_log(text)
+    assert rows == [fields.split(",")]
+    assert "S," not in log and "negotiated" in log and "measured_reqs" in log
+
+
+def test_split_k6_log_rejects_wrong_field_count():
+    with pytest.raises(ValueError):
+        split_k6_log('time="t" level=info msg="S,1,2,3" source=console\n')
+
+
+def test_ts_ns_parses_docker_and_python_timestamps():
+    docker = ts_ns("2026-10-20T17:26:53.289435381Z")
+    python = ts_ns("2026-10-20T17:26:53.289435+00:00")
+    assert docker - python == 381
+    assert ts_ns("2026-10-20T17:26:53Z") == ts_ns("2026-10-20T17:26:53.000+00:00")

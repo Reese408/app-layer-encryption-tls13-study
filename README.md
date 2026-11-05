@@ -2,7 +2,7 @@
 
 # Application-Layer Authenticated Encryption over TLS 1.3: A Controlled Performance Study
 
-> **Status: Phase 1 (planning and environment).** No benchmark has been run yet, so this repository contains no measurements. Results will be added only after real execution, together with the raw output behind them.
+> **Status: experiments complete; results report drafted ([reports/results.md](reports/results.md)), awaiting owner review.** Experiment A (90-run closed-loop matrix) and Experiment B (30-run open loop) were run on 2026-10-20/21; all 120 runs pass every pre-specified acceptance criterion. Pilot and validation: [reports/pilot.md](reports/pilot.md).
 
 ## Abstract
 
@@ -56,16 +56,28 @@ The hypotheses, variables, and statistical method are in [docs/research-design.m
 
 ## Quick start
 
-The commands below are the intended interface. They will be implemented and checked in Phase 2. Until then they are not expected to work.
+Prerequisites: Docker Desktop with Compose v2+, [uv](https://docs.astral.sh/uv/), OpenSSL, and Python 3.12. k6 runs in a container, so it does not need to be installed.
 
 ```bash
-make setup        # create the virtualenv, generate the local CA/certs and AEAD keys (gitignored)
-make test         # run unit, functional, and cryptographic correctness tests
-make up           # start both API configurations under Docker Compose
-make smoke        # short k6 run to check both configurations respond equivalently
-make bench        # full benchmark matrix -> results/raw/<timestamp>/
-make analyze      # tables and charts -> results/processed/, reports/figures/
+make setup        # venv, local CA/certs, AEAD keys, payload fixtures (all gitignored), images
+make test         # unit, functional, cryptographic, TLS 1.3, and analysis tests
+make up           # start both API configurations (https://localhost:8443 plain, :8444 aead)
+make validate     # TLS 1.3/1.2 negotiation evidence + resource-sampler validation
+make smoke        # 12 short runs; fails on any error or integrity mismatch
+make pilot        # 24-run pilot -> results/raw/<timestamp>-pilot/
+make validate-pipeline   # reduced closed- and open-loop runs exercising the revised pipeline
+make analyze      # tables for the latest run -> results/processed/<run>/  (RUN=<dir> to pick one)
+make stats RUN=results/raw/<dir>       # paired run-level effect sizes, CIs, Holm correction
+make check-run RUN=results/raw/<dir>   # acceptance criteria (restart isolation, samples, drops)
+make bench        # Experiment A: full 90-run closed-loop matrix; gated (--allow-full)
+make openloop     # Experiment B: 30-run open-loop experiment; gated, analysed separately
+make dashboard RUNS="results/raw/<dir> ..."  # static offline HTML dashboard
+make grafana RUNS="results/raw/<dir> ..."    # Prometheus (backfilled) + Grafana, http://127.0.0.1:3000
+make grafana-down
+make down
 ```
+
+Benchmark parameters live in [`experiment.toml`](experiment.toml), and each run records them in its manifest.
 
 ## Ethics and safety
 

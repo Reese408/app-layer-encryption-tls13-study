@@ -1,0 +1,716 @@
+{
+ "uid": "aead-results",
+ "title": "Results: AES-GCM envelope vs TLS-only",
+ "tags": [
+  "aead-study"
+ ],
+ "timezone": "utc",
+ "schemaVersion": 39,
+ "editable": true,
+ "refresh": "",
+ "time": {
+  "from": "now-6h",
+  "to": "now"
+ },
+ "panels": [
+  {
+   "id": 1,
+   "type": "text",
+   "title": "",
+   "gridPos": {
+    "x": 0,
+    "y": 0,
+    "w": 24,
+    "h": 3
+   },
+   "options": {
+    "mode": "markdown",
+    "content": "**Statistical results** from `analysis/stats.py` (pre-specified in docs/research-design.md \u00a75): the unit of analysis is one run; aead and plain are paired within randomized blocks. Ratio = geometric mean of aead/plain over blocks with a paired-t 95% CI; *p_holm* is Holm-adjusted within the metric family. Per-run values are exact k6 percentiles over all measured requests. Closed loop (`c<VUs>`) and open loop (`a<rate>`) are separate experiments and are never pooled."
+   }
+  },
+  {
+   "id": 2,
+   "type": "bargauge",
+   "title": "Effect of AES-GCM envelope: % change aead vs plain ($metric)",
+   "description": "Point estimate of (geometric-mean ratio \u2212 1) \u00d7 100 per cell. See the table for CIs and p-values.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 3,
+    "w": 12,
+    "h": 9
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prom"
+     },
+     "expr": "sort_by_label(last_over_time(bench_effect{dataset=~\"$dataset\",metric=\"$metric\",stat=\"pct_change\"}[30d]), \"cell\")",
+     "legendFormat": "{{size}} \u00b7 {{load}}",
+     "refId": "A",
+     "range": false,
+     "instant": true,
+     "format": "time_series"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {},
+     "unit": "percent",
+     "decimals": 1,
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#d95926"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "orientation": "horizontal",
+    "displayMode": "basic",
+    "showUnfilled": true,
+    "valueMode": "color",
+    "namePlacement": "left",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "values": false
+    }
+   }
+  },
+  {
+   "id": 3,
+   "type": "table",
+   "title": "Paired effect sizes, CIs, and Holm-adjusted p ($metric)",
+   "description": "ratio, ci95 = paired-t 95% CI of the geometric-mean ratio; simci = Bonferroni-simultaneous CI for the family; delta = mean aead \u2212 plain (metric units).",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 3,
+    "w": 12,
+    "h": 9
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prom"
+     },
+     "expr": "last_over_time(bench_effect{dataset=~\"$dataset\",metric=\"$metric\"}[30d])",
+     "legendFormat": "",
+     "refId": "A",
+     "range": false,
+     "instant": true,
+     "format": "time_series"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {},
+     "decimals": 4
+    },
+    "overrides": []
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm"
+   },
+   "transformations": [
+    {
+     "id": "joinByLabels",
+     "options": {
+      "value": "stat",
+      "join": [
+       "cell",
+       "size",
+       "load"
+      ]
+     }
+    },
+    {
+     "id": "sortBy",
+     "options": {
+      "sort": [
+       {
+        "field": "cell"
+       }
+      ]
+     }
+    },
+    {
+     "id": "organize",
+     "options": {
+      "excludeByName": {
+       "cell": true
+      },
+      "indexByName": {
+       "size": 0,
+       "load": 1,
+       "n_blocks": 2,
+       "ratio": 3,
+       "ci95_lo": 4,
+       "ci95_hi": 5,
+       "pct_change": 6,
+       "delta": 7,
+       "p_t": 8,
+       "p_holm": 9,
+       "simci_lo": 10,
+       "simci_hi": 11,
+       "cliffs_delta": 12
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "type": "bargauge",
+   "title": "Median across repetitions: http_req_duration p50 (exact, ms)",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 12,
+    "w": 8,
+    "h": 11
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prom"
+     },
+     "expr": "sort_by_label(quantile by (cell, size, load, mode) (0.5, last_over_time(bench_run_value{dataset=~\"$dataset\",metric=\"lat_p50_ms\"}[30d])), \"cell\", \"mode\")",
+     "legendFormat": "{{size}} \u00b7 {{load}} \u00b7 {{mode}}",
+     "refId": "A",
+     "range": false,
+     "instant": true,
+     "format": "time_series"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {},
+     "unit": "ms",
+     "decimals": 3
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": ".*plain"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#3987e5"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": ".*aead"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#d95926"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "orientation": "horizontal",
+    "displayMode": "basic",
+    "valueMode": "color",
+    "namePlacement": "left",
+    "showUnfilled": true,
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "values": false
+    }
+   }
+  },
+  {
+   "id": 5,
+   "type": "bargauge",
+   "title": "Median across repetitions: http_req_duration p99 (exact, ms)",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   },
+   "gridPos": {
+    "x": 8,
+    "y": 12,
+    "w": 8,
+    "h": 11
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prom"
+     },
+     "expr": "sort_by_label(quantile by (cell, size, load, mode) (0.5, last_over_time(bench_run_value{dataset=~\"$dataset\",metric=\"lat_p99_ms\"}[30d])), \"cell\", \"mode\")",
+     "legendFormat": "{{size}} \u00b7 {{load}} \u00b7 {{mode}}",
+     "refId": "A",
+     "range": false,
+     "instant": true,
+     "format": "time_series"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {},
+     "unit": "ms",
+     "decimals": 3
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": ".*plain"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#3987e5"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": ".*aead"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#d95926"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "orientation": "horizontal",
+    "displayMode": "basic",
+    "valueMode": "color",
+    "namePlacement": "left",
+    "showUnfilled": true,
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "values": false
+    }
+   }
+  },
+  {
+   "id": 6,
+   "type": "bargauge",
+   "title": "Median across repetitions: throughput (req/s)",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   },
+   "gridPos": {
+    "x": 16,
+    "y": 12,
+    "w": 8,
+    "h": 11
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prom"
+     },
+     "expr": "sort_by_label(quantile by (cell, size, load, mode) (0.5, last_over_time(bench_run_value{dataset=~\"$dataset\",metric=\"rps\"}[30d])), \"cell\", \"mode\")",
+     "legendFormat": "{{size}} \u00b7 {{load}} \u00b7 {{mode}}",
+     "refId": "A",
+     "range": false,
+     "instant": true,
+     "format": "time_series"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {},
+     "unit": "reqps",
+     "decimals": 0
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": ".*plain"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#3987e5"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": ".*aead"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#d95926"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "orientation": "horizontal",
+    "displayMode": "basic",
+    "valueMode": "color",
+    "namePlacement": "left",
+    "showUnfilled": true,
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "values": false
+    }
+   }
+  },
+  {
+   "id": 7,
+   "type": "bargauge",
+   "title": "API CPU per request (CPU-ms/request, median across repetitions)",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 23,
+    "w": 12,
+    "h": 10
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prom"
+     },
+     "expr": "sort_by_label(quantile by (cell, size, load, mode) (0.5, last_over_time(bench_run_value{dataset=~\"$dataset\",metric=\"api_cpu_ms_per_req\"}[30d])), \"cell\", \"mode\")",
+     "legendFormat": "{{size}} \u00b7 {{load}} \u00b7 {{mode}}",
+     "refId": "A",
+     "range": false,
+     "instant": true,
+     "format": "time_series"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {},
+     "unit": "ms",
+     "decimals": 3
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": ".*plain"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#3987e5"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": ".*aead"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#d95926"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "orientation": "horizontal",
+    "displayMode": "basic",
+    "valueMode": "color",
+    "namePlacement": "left",
+    "showUnfilled": true,
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "values": false
+    }
+   }
+  },
+  {
+   "id": 8,
+   "type": "bargauge",
+   "title": "Acceptance criteria: fraction of runs passing",
+   "description": "From analysis/validate_pipeline.py. Runs that fail are excluded from the statistics (stats.py).",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 23,
+    "w": 12,
+    "h": 10
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prom"
+     },
+     "expr": "sum by (criterion) (last_over_time(bench_validation_pass{dataset=~\"$dataset\"}[30d])) / count by (criterion) (last_over_time(bench_validation_pass{dataset=~\"$dataset\"}[30d]))",
+     "legendFormat": "{{criterion}}",
+     "refId": "A",
+     "range": false,
+     "instant": true,
+     "format": "time_series"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {},
+     "unit": "percentunit",
+     "decimals": 3,
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "red",
+        "value": null
+       },
+       {
+        "color": "green",
+        "value": 1
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     },
+     "min": 0,
+     "max": 1
+    },
+    "overrides": []
+   },
+   "options": {
+    "orientation": "horizontal",
+    "displayMode": "basic",
+    "valueMode": "color",
+    "namePlacement": "left",
+    "showUnfilled": true,
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "values": false
+    }
+   }
+  },
+  {
+   "id": 9,
+   "type": "table",
+   "title": "Per-run values (exact k6 statistics over the measurement window)",
+   "description": "One row per run. Sort by any column. dropped_measure is NaN for closed-loop runs.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 33,
+    "w": 24,
+    "h": 12
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prom"
+     },
+     "expr": "last_over_time(bench_run_value{dataset=~\"$dataset\"}[30d])",
+     "legendFormat": "",
+     "refId": "A",
+     "range": false,
+     "instant": true,
+     "format": "time_series"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {},
+     "decimals": 4
+    },
+    "overrides": []
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm",
+    "sortBy": [
+     {
+      "displayName": "run_id",
+      "desc": false
+     }
+    ]
+   },
+   "transformations": [
+    {
+     "id": "joinByLabels",
+     "options": {
+      "value": "metric",
+      "join": [
+       "run_id",
+       "mode",
+       "size",
+       "load",
+       "rep",
+       "cell"
+      ]
+     }
+    },
+    {
+     "id": "sortBy",
+     "options": {
+      "sort": [
+       {
+        "field": "run_id"
+       }
+      ]
+     }
+    },
+    {
+     "id": "organize",
+     "options": {
+      "excludeByName": {
+       "cell": true
+      },
+      "indexByName": {
+       "run_id": 0,
+       "mode": 1,
+       "size": 2,
+       "load": 3,
+       "rep": 4,
+       "lat_p50_ms": 5,
+       "lat_p95_ms": 6,
+       "lat_p99_ms": 7,
+       "rps": 8,
+       "api_cpu_ms_per_req": 9
+      }
+     }
+    }
+   ]
+  }
+ ],
+ "links": [
+  {
+   "title": "Session timeline",
+   "type": "link",
+   "url": "/d/aead-timeline"
+  }
+ ],
+ "templating": {
+  "list": [
+   {
+    "name": "dataset",
+    "label": "dataset",
+    "type": "query",
+    "datasource": {
+     "type": "prometheus",
+     "uid": "prom"
+    },
+    "query": {
+     "query": "label_values(bench_run_value, dataset)",
+     "refId": "v"
+    },
+    "definition": "label_values(bench_run_value, dataset)",
+    "multi": false,
+    "includeAll": false,
+    "current": {},
+    "refresh": 1,
+    "sort": 1
+   },
+   {
+    "name": "metric",
+    "label": "metric",
+    "type": "query",
+    "datasource": {
+     "type": "prometheus",
+     "uid": "prom"
+    },
+    "query": {
+     "query": "label_values(bench_effect{dataset=~\"$dataset\"}, metric)",
+     "refId": "v"
+    },
+    "definition": "label_values(bench_effect{dataset=~\"$dataset\"}, metric)",
+    "multi": false,
+    "includeAll": false,
+    "current": {
+     "text": "lat_p50_ms",
+     "value": "lat_p50_ms"
+    },
+    "refresh": 1,
+    "sort": 1
+   }
+  ]
+ }
+}

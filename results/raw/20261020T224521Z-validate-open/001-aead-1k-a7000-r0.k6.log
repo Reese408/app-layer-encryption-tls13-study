@@ -1,0 +1,4 @@
+[001-aead-1k-a7000-r0] measured_reqs=104701 rps=6980.1 p50=0.158ms p95=0.637ms p99=1.148ms checks=1 integrity=1 dropped=0 warmup_dropped=0
+time="2026-10-20T22:45:57Z" level=warning msg="There were unknown fields in the options exported in the script" error="json: unknown field \"minVersion\""
+time="2026-10-20T22:45:57Z" level=info msg="negotiated tls_version=tls1.3 cipher=TLS_AES_256_GCM_SHA384" source=console
+time="2026-10-20T22:46:02Z" level=info msg="negotiated tls_version=tls1.3 cipher=TLS_AES_256_GCM_SHA384" source=console
