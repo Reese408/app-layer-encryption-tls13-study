@@ -105,6 +105,46 @@ def t_ci(x: np.ndarray, level: float) -> tuple[float, float]:
     return float(x.mean() - h), float(x.mean() + h)
 
 
+def threshold_test(log_r: np.ndarray, threshold_ratio: float, level: float = 0.95) -> dict:
+    """One-sided bounds on a geometric-mean ratio against a threshold (H5, §7.5).
+
+    H0: ratio >= threshold; H1: ratio < threshold. `ucb`/`lcb` are one-sided `level` bounds
+    exp(mean ± t_{level, n-1} · sd / sqrt(n)) of the per-block log ratios. Verdict:
+    supported if ucb < threshold, rejected if lcb >= threshold, else inconclusive.
+    `p_one_sided` is the t-test p for H0 (p < 1 - level exactly when ucb < threshold).
+    """
+    x = np.asarray(log_r, dtype=float)
+    n = len(x)
+    if n < 2:
+        nan = float("nan")
+        return {
+            "n": n,
+            "ratio": nan,
+            "ucb": nan,
+            "lcb": nan,
+            "p_one_sided": nan,
+            "verdict": "inconclusive",
+        }
+    m, se = float(x.mean()), float(x.std(ddof=1) / np.sqrt(n))
+    q = float(stats.t.ppf(level, n - 1))
+    ucb, lcb = float(np.exp(m + q * se)), float(np.exp(m - q * se))
+    thr = float(np.log(threshold_ratio))
+    p = float(stats.t.cdf((m - thr) / se, n - 1)) if se > 0 else float(m < thr)
+    verdict = (
+        "supported"
+        if ucb < threshold_ratio
+        else ("rejected" if lcb >= threshold_ratio else "inconclusive")
+    )
+    return {
+        "n": n,
+        "ratio": float(np.exp(m)),
+        "ucb": ucb,
+        "lcb": lcb,
+        "p_one_sided": p,
+        "verdict": verdict,
+    }
+
+
 def paired(df: pd.DataFrame, metric: str) -> pd.DataFrame:
     """One row per (size, load) cell with paired effect sizes and unadjusted tests."""
     rows = []

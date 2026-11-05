@@ -112,3 +112,72 @@ def test_ts_ns_parses_docker_and_python_timestamps():
     python = ts_ns("2026-10-20T17:26:53.289435+00:00")
     assert docker - python == 381
     assert ts_ns("2026-10-20T17:26:53Z") == ts_ns("2026-10-20T17:26:53.000+00:00")
+
+
+# --- Experiment C (H5) ----------------------------------------------------------------------
+
+THR = 1 / 0.99
+
+
+def test_threshold_test_matches_hand_calculation():
+    r = np.array([1.002, 0.999, 1.004, 1.001, 1.000])
+    x = np.log(r)
+    # Hand calculation: t_{0.95,4} = 2.131847 (standard table value).
+    se = x.std(ddof=1) / np.sqrt(5)
+    ucb = np.exp(x.mean() + 2.131847 * se)
+    t = stats.threshold_test(x, THR)
+    assert t["ucb"] == pytest.approx(ucb, rel=1e-6)
+    assert t["ratio"] == pytest.approx(np.exp(x.mean()))
+    assert t["verdict"] == "supported" and t["p_one_sided"] < 0.05
+
+
+@pytest.mark.parametrize(
+    "ratios, verdict",
+    [
+        ([1.001, 1.002, 1.000, 1.001, 1.002], "supported"),
+        ([0.99, 1.03, 1.00, 0.98, 1.02], "inconclusive"),  # noise covers the threshold
+        ([1.05, 1.06, 1.04, 1.05, 1.07], "rejected"),
+    ],
+)
+def test_threshold_test_verdicts(ratios, verdict):
+    t = stats.threshold_test(np.log(ratios), THR)
+    assert t["verdict"] == verdict
+    # Duality: the one-sided p is below alpha exactly when the UCB is below the threshold.
+    assert (t["p_one_sided"] < 0.05) == (t["ucb"] < THR)
+    assert t["lcb"] <= t["ratio"] <= t["ucb"]
+
+
+def test_h5_expected_order_and_overall():
+    import h5
+
+    o = h5.expected_order("aead", 8, 16)
+    assert o[:4] == [("aead", "p1"), ("plain", "p2"), ("aead", "p3"), ("plain", "p4")]
+    assert sum(m == "plain" for m, _ in o) == 8
+    res = pd.DataFrame(
+        {"role": ["primary", "primary", "secondary"], "verdict": ["supported"] * 2 + ["x"]}
+    )
+    assert h5.overall(res) == "supported"
+    res.loc[1, "verdict"] = "inconclusive"
+    assert h5.overall(res) == "inconclusive"
+    res.loc[0, "verdict"] = "rejected"
+    assert h5.overall(res) == "rejected"
+
+
+def test_envelope_breakdown_shares_and_residual():
+    import envelope_micro as em
+
+    rows = []
+    for proc in range(3):
+        base = {"proc": proc, "size": "1k", "plaintext_bytes": 1024, "envelope_bytes": 1400}
+        for op, ns in {
+            "seal.whole": 10_000, "seal.urandom": 500, "seal.aad": 500, "seal.aesgcm": 3000,
+            "seal.b64": 2000, "seal.json": 2000, "open.whole": 8000, "open.json": 2000,
+            "open.b64": 2000, "open.aesgcm": 2000,
+        }.items():  # fmt: skip
+            for rep in range(5):
+                rows.append({**base, "op": op, "rep": rep, "ns_per_op": ns + proc * 10 * rep})
+    b = em.breakdown(pd.DataFrame(rows)).set_index("op")
+    assert b.loc["seal.aesgcm", "share_median"] == pytest.approx(0.3, abs=0.01)
+    assert b.loc["seal.residual", "share_median"] == pytest.approx(0.2, abs=0.01)
+    assert b.loc["open.residual", "us_median"] == pytest.approx(2.0, abs=0.05)
+    assert (b.n_proc == 3).all()

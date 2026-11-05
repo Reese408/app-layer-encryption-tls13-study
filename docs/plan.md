@@ -40,13 +40,20 @@ Status markers: ☐ not started · ◐ in progress · ☑ done (verified by exec
 
 1. **Per-request k6 CSV dropped.** At more than 10⁴ requests per second it would produce about 10⁷ rows per run. The k6 end-of-test summary, whose percentiles are exact over all measured samples, is the raw per-run record.
 2. **Client-side crypto timing.** k6 v2.3 has no `performance.now()`. Per-request client encrypt/decrypt timers have 1 ms resolution and are reported as means only. A high-resolution figure comes from `iteration_duration − http_req_duration` and from a loop-timed microbenchmark.
-3. **TLS max version option.** k6 v2.3 rejects `maxVersion`. TLS 1.3 is enforced by k6's `minVersion`, by the server's `minimum_version`, and by a per-request `tls_version` check.
+3. **TLS max version option.** k6 v2.3 rejects `maxVersion`. TLS 1.3 is enforced by k6's `minVersion`, by the server's `minimum_version`, and by a per-request `tls_version` check. **Correction (2026-10-21):** k6 v2.3 also ignores `minVersion`. Every Experiment A and B log reports `unknown field "minVersion"`, so the client did not restrict the TLS version. TLS 1.3 was enforced by the server's `minimum_version` and verified by the per-request `tls_version == tls1.3` check, which passed for every measured request. The results are unaffected. `k6/infer.js` uses the supported `tlsVersion` option.
 4. **Payload fixtures** are regenerated deterministically and not committed. Their SHA-256 hashes are recorded in each run manifest.
 5. **Statistical method** (post-pilot). The planned unpaired Mann–Whitney U test is replaced as the primary test by a paired run-level analysis (block-paired log ratios, *t*-based CIs, and Holm correction within each metric family). With 5 versus 5 runs, Mann–Whitney's smallest attainable p (≈ 0.008) leaves almost no room under Holm across 9 cells, and it ignores the randomized block structure. Mann–Whitney is kept as a robustness check. See research-design.md §5.
 6. **Client timer** (post-pilot). `exec.instance.currentTestRunDuration` (monotonic, sub-µs) replaces `Date.now()` for client encrypt and decrypt timing. This partly supersedes deviation 2.
 7. **Health check start interval** (post-pilot). `compose.yaml` sets `start_period: 30s` and `start_interval: 250ms`, so readiness after a per-run restart is detected in about 1 s rather than 5 s. After the first success, the 5 s interval from the Dockerfile applies, as in the pilot.
 
 8. **Open-loop run structure** (post-pilot, during validation; approved by the owner). After the first three open-loop validation attempts, the open-loop run was split into a ramped, drained warm-up scenario and a constant-rate measurement scenario. The VU pool was sized to absorb 100 ms stalls (700 / 190 / 64), and the open-loop sample interval was changed to 23 / 23 / 3. See architecture.md §6.2 and reports/pilot.md §10.3.
+
+9. **Phase 4 design** (approved by the owner on 2026-10-21, before any H5 data).
+   - **Response lengths.** Two lengths, 32 and 256 tokens, replace the single 128-token level. The short level is the worst case for H5, and the pair separates fixed cost from per-token cost.
+   - **Concurrency.** The concurrency-4 cell is deferred. GPU queueing and batching would make the work unequal between modes.
+   - **Interleaved runs.** Modes alternate inside each run, unlike Experiments A and B. One shared GPU dominates latency, and the 1% threshold claim needs drift between runs removed.
+   - **Prompt order.** It is counterbalanced, because of Ollama's prompt cache.
+   - Full protocol: research-design.md §7.
 
 ## Phase 3: Evidence
 
@@ -65,9 +72,14 @@ Status markers: ☐ not started · ◐ in progress · ☑ done (verified by exec
 
 | # | Deliverable |
 |---|---|
-| 4.1 | `/v1/infer` endpoint calling Ollama `qwen3:8b` with `temperature=0`, `seed=42`, `num_predict=128`, `think=false`, and a fixed prompt set |
-| 4.2 | A reduced matrix (two modes, concurrency 1 and 4, five repetitions), because inference is slow and serializes on the GPU |
+| 4.0 ☑ | Owner approval of the continuation plan (2026-10-21): H5 operational definition, interleaved runs, response lengths 32/256, concurrency 4 deferred, Ollama process and GPU counters recorded, branch `phase-4-inference`. Protocol pre-registered in research-design.md §7 before any H5 data. |
+| 4.1 | `/v1/infer` endpoint calling Ollama `qwen3:8b` with `temperature=0`, `seed=42`, `think=false`, `num_predict` ∈ {32, 256} (deviation 9), and a fixed prompt set |
+| 4.2 | One virtual user, two response lengths, interleaved modes, five blocks (deviation 9). The concurrency-4 cell is deferred. |
 | 4.3 | Separate reporting of inference time (from Ollama's `eval_duration` / `total_duration` and the `infer` server-timing value) and encryption time |
+| 4.4 ☑ | Determinism check ☑ (40/40 to the token limit, byte-identical repeats), then the pilot ☑ (`infer-pilot`, 6/6 valid; [reports/infer-pilot.md](../reports/infer-pilot.md)), then the owner's gate (G7 ☑ approved 2026-10-21: full run unchanged, GPU counters kept on, pilot issues 1–2 handled in reporting only), then the full run ☑ (`infer`, 10/10 valid, H5 supported at both lengths; [reports/results-inference.md](../reports/results-inference.md)) |
+| 4.7 ☑ | Publication figures (grayscale SVG + 600 DPI PNG, deterministic): H5 overhead and envelope cost breakdown, in `reports/figures/` (`make figures`); evidence inventory in [notes/final-research-handoff.md](notes/final-research-handoff.md) |
+| 4.6 | Research notes (not paper text): [security analysis](notes/security-analysis.md), [frontier and agentic implications](notes/frontier-implications.md), [verified references](notes/references.md) |
+| 4.5 ☑ | G8 ☑ approved 2026-10-21; executed (`results/raw/20261021T162323Z-envelope-micro`). After H5: an in-process breakdown of envelope cost (AES-GCM vs Base64 vs JSON), with no change to the API. Protocol in research-design.md §8. |
 
 ## Decisions for owner review
 
